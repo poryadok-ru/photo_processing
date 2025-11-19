@@ -1,10 +1,38 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+# Virtual Environment
+.venv/
+venv/
 
-# Virtual environments
-.venv
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+logs/
+
+# Environment files - template only
+.env.local
+.env.production
+
+# Metabase and database
+docker-compose.metabase.yml
+metabase_settings_backup.sql
+db/
+
+# Test files
+test
+
+# Temporary files
+*.tmp# Docker logs
+docker.log
+
+# Google API credentials
+acc_google_api/
+
+# Environment files - ignore all .env except .env.example
+.env*
+!.env.example
