@@ -36,3 +36,7 @@ acc_google_api/
 # Environment files - ignore all .env except .env.example
 .env*
 !.env.example
+
+# Testing files
+create_admin.py
+run_api.py
