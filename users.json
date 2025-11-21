@@ -5,8 +5,17 @@
       "api_key": "qdgMpNeoF3uP9HJPv4xO7ewfMPZ3e1r-4Bahozg6TG0",
       "is_admin": true,
       "created_at": 1763666235.8544395,
-      "last_used": 1763671334.3710575,
+      "last_used": 1763753748.898667,
       "rate_limit": 1000,
+      "is_active": true
+    },
+    {
+      "username": "test",
+      "api_key": "GspoqOefPWGdFQVv_XHl37Ws372AEL6Suz3mJjnVqfo",
+      "is_admin": false,
+      "created_at": 1763753682.0723574,
+      "last_used": 1763753725.2663493,
+      "rate_limit": 100,
       "is_active": true
     }
   ]

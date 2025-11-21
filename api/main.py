@@ -27,29 +27,12 @@ async def startup_event():
 async def periodic_cleanup():
     """Периодическая очистка старых задач"""
     while True:
-        await asyncio.sleep(3600)  # Каждый час
+        await asyncio.sleep(3600)
         task_manager.cleanup_old_tasks()
-
-# ==================== PUBLIC ENDPOINTS ====================
-
-@app.get("/", tags=["system"])
-async def root():
-    """Корневой эндпоинт с информацией об API"""
-    return {
-        "message": "Image Processing API", 
-        "version": "2.0.0", 
-        "auth_required": True,
-        "docs_url": "/docs"
-    }
-
-@app.get("/health", tags=["system"])
-async def health_check():
-    """Проверка здоровья сервиса"""
-    return {"status": "healthy"}
 
 # ==================== AUTH ENDPOINTS ====================
 
-@app.get("/auth/test", tags=["auth"])
+@app.get("/api/v1/tests/auth/me", tags=["auth"])
 async def test_auth(user: dict = Depends(verify_api_key)):
     """Тестирование аутентификации и проверка прав пользователя"""
     return {
@@ -61,7 +44,7 @@ async def test_auth(user: dict = Depends(verify_api_key)):
 # ==================== PROCESSING ENDPOINTS ====================
 '''
 @app.post(
-    "/processing/single",
+    "/api/v1/processing/single",
     response_model=ImageResponse,
     tags=["processing"]
 )
@@ -92,7 +75,7 @@ async def process_single_image(
         raise HTTPException(500, f"Processing failed: {str(e)}")
 
 @app.post(
-    "/processing/batch",
+    "/api/v1/processing/batch",
     response_class=Response,
     tags=["processing"]
 )
@@ -124,7 +107,7 @@ async def process_batch(
     except Exception as e:
         raise HTTPException(500, f"Processing failed: {str(e)}")
 '''
-@app.post("/processing/parallel", 
+@app.post("/api/v1/processing/parallel", 
           response_model=ProcessingResponse,
           tags=["processing"])
 async def process_parallel(
@@ -154,7 +137,7 @@ async def process_parallel(
 
 # ==================== TASKS ENDPOINTS ====================
 
-@app.get("/tasks/{task_id}/status", 
+@app.get("/api/v1/tasks/{task_id}/status", 
          response_model=TaskStatusResponse,
          tags=["tasks"])
 async def get_task_status(
@@ -177,7 +160,7 @@ async def get_task_status(
         error=task["error"]
     )
 
-@app.get("/tasks/{task_id}/download",
+@app.get("/api/v1/tasks/{task_id}/download",
          tags=["tasks"])
 async def download_task_result(
     task_id: str,
@@ -207,9 +190,9 @@ async def download_task_result(
 
 # ==================== ADMIN ENDPOINTS ====================
 
-@app.post("/admin/users", 
+@app.post("/api/v1/admin/users", 
           response_model=APIKeyResponse,
-          tags=["admin", "users"])
+          tags=["admin"])
 async def create_user(
     user_data: UserCreate,
     admin: dict = Depends(verify_admin)
@@ -233,9 +216,9 @@ async def create_user(
     except Exception as e:
         raise HTTPException(500, f"Failed to create user: {str(e)}")
 
-@app.get("/admin/users", 
+@app.get("/api/v1/admin/users", 
          response_model=List[UserResponse],
-         tags=["admin", "users"])
+         tags=["admin"])
 async def list_users(admin: dict = Depends(verify_admin)):
     """Получение списка всех пользователей системы"""
     try:
@@ -246,8 +229,8 @@ async def list_users(admin: dict = Depends(verify_admin)):
     except Exception as e:
         raise HTTPException(500, f"Failed to get users: {str(e)}")
 
-@app.put("/admin/users/{username}",
-         tags=["admin", "users"])
+@app.put("/api/v1/admin/users/{username}",
+         tags=["admin"])
 async def update_user(
     username: str,
     updates: UserUpdate,
@@ -266,8 +249,8 @@ async def update_user(
     except Exception as e:
         raise HTTPException(500, f"Failed to update user: {str(e)}")
 
-@app.delete("/admin/users/{username}",
-            tags=["admin", "users"])
+@app.delete("/api/v1/admin/users/{username}",
+            tags=["admin"])
 async def delete_user(
     username: str,
     admin: dict = Depends(verify_admin)
@@ -286,9 +269,9 @@ async def delete_user(
         raise HTTPException(500, f"Failed to delete user: {str(e)}")
 
 # ==================== TOKENS ENDPOINTS ====================
-
+'''
 @app.post("/admin/tokens/{username}/regenerate",
-          tags=["admin", "tokens"])
+          tags=["tokens"])
 async def regenerate_api_key(
     username: str,
     admin: dict = Depends(verify_admin)
@@ -307,11 +290,11 @@ async def regenerate_api_key(
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(500, f"Failed to regenerate API key: {str(e)}")
-
+'''
 # ==================== STATISTICS ENDPOINTS ====================
-
+'''
 @app.get("/admin/statistics",
-         tags=["admin", "statistics"])
+         tags=["statistics"])
 async def get_stats(admin: dict = Depends(verify_admin)):
     """Получение статистики использования API"""
     try:
@@ -361,7 +344,7 @@ async def get_tasks_statistics(admin: dict = Depends(verify_admin)):
         }
     except Exception as e:
         raise HTTPException(500, f"Failed to get tasks statistics: {str(e)}")
-
+'''
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
