@@ -65,6 +65,10 @@ class TaskManager:
             self._tasks[task_id]["status"] = TaskStatus.FAILED
             self._tasks[task_id]["end_time"] = datetime.now()
     
+    def remove_task(self, task_id: str):
+        """Удаляет задачу по id"""
+        self._tasks.pop(task_id, None)
+
     def cleanup_old_tasks(self, max_age_hours: int = 24):
         """Очищает старые задачи для экономии памяти"""
         current_time = datetime.now()

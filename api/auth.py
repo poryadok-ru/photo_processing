@@ -1,3 +1,4 @@
+import os
 import json
 import secrets
 from typing import Optional, Dict, Any
@@ -9,10 +10,17 @@ import time
 
 security = HTTPBearer()
 
+if os.path.exists('/app'):
+    USERS_FILE = Path('/app/data/users.json')
+else:
+    USERS_FILE = Path(__file__).parent.parent / 'data' / 'users.json'
+
+USERS_FILE.parent.mkdir(exist_ok=True)
+
 class AuthManager:
     """Менеджер аутентификации с хранением в JSON"""
     
-    def __init__(self, users_file: Path = Path("users.json")):
+    def __init__(self, users_file: Path = USERS_FILE):
         self.users_file = users_file
         self.users_file.parent.mkdir(exist_ok=True)
     

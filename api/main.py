@@ -5,6 +5,9 @@ import asyncio
 from datetime import datetime
 import io
 
+import os
+from pathlib import Path
+
 from .task_manager import task_manager
 from .background_processor import background_processor
 from .processors.async_white_processor import AsyncWhiteProcessor
@@ -13,9 +16,17 @@ from .models.schemas import ProcessingResponse, ImageResponse, TaskStatusRespons
 from .auth import auth_manager, verify_api_key, verify_admin
 from .models.auth_schemas import UserCreate, UserResponse, APIKeyResponse, UserUpdate
 
+if os.path.exists('/app'):
+    BASE_DIR = Path('/app')
+else:
+    BASE_DIR = Path(__file__).parent.parent
+
+USERS_FILE = BASE_DIR / 'data' / 'users.json'
+USERS_FILE.parent.mkdir(exist_ok=True)
+
 app = FastAPI(
     title="Image Processing API",
-    description="API для обработки изображений с аутентификацией",
+    description="API для обработки изображений",
     version="2.3.0"
 )
 
@@ -30,6 +41,12 @@ async def periodic_cleanup():
         await asyncio.sleep(3600)
         task_manager.cleanup_old_tasks()
 
+# ==================== CHECK HEALTH ====================
+
+@app.get("/health", tags=["sys"])
+async def health_check():
+    return {"status": "healthy"}
+
 # ==================== AUTH ENDPOINTS ====================
 
 @app.get("/api/v1/tests/auth/me", tags=["auth"])
@@ -42,71 +59,7 @@ async def test_auth(user: dict = Depends(verify_api_key)):
     }
 
 # ==================== PROCESSING ENDPOINTS ====================
-'''
-@app.post(
-    "/api/v1/processing/single",
-    response_model=ImageResponse,
-    tags=["processing"]
-)
-async def process_single_image(
-    white_bg: bool = True,
-    file: UploadFile = File(...),
-    user: dict = Depends(verify_api_key)
-):
-    """Обработка одного изображения с возвратом результата напрямую"""
-    if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-        raise HTTPException(400, "Invalid image format")
-    
-    try:
-        if white_bg:
-            processor = AsyncWhiteProcessor()
-        else:
-            processor = AsyncInteriorProcessor()
-        
-        processed_data, filename = await processor.process_single(file)
-        
-        return StreamingResponse(
-            io.BytesIO(processed_data),
-            media_type="image/jpeg",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-        
-    except Exception as e:
-        raise HTTPException(500, f"Processing failed: {str(e)}")
 
-@app.post(
-    "/api/v1/processing/batch",
-    response_class=Response,
-    tags=["processing"]
-)
-async def process_batch(
-    white_bg: bool = True,
-    files: List[UploadFile] = File(...),
-    user: dict = Depends(verify_api_key)
-):
-    """Пакетная обработка нескольких изображений с возвратом ZIP архива"""
-    if not files:
-        raise HTTPException(400, "No files provided")
-    
-    try:
-        if white_bg:
-            processor = AsyncWhiteProcessor()
-        else:
-            processor = AsyncInteriorProcessor()
-        
-        zip_buffer = await processor.process_batch(files)
-        
-        return Response(
-            content=zip_buffer.getvalue(),
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": "attachment; filename=processed_images.zip",
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(500, f"Processing failed: {str(e)}")
-'''
 @app.post("/api/v1/processing/parallel", 
           response_model=ProcessingResponse,
           tags=["processing"])
@@ -160,10 +113,12 @@ async def get_task_status(
         error=task["error"]
     )
 
-@app.get("/api/v1/tasks/{task_id}/download",
-         tags=["tasks"])
+
+
+@app.get("/api/v1/tasks/{task_id}/download", tags=["tasks"])
 async def download_task_result(
     task_id: str,
+    background_tasks: BackgroundTasks,
     user: dict = Depends(verify_api_key)
 ):
     """Скачивание результатов выполненной задачи"""
@@ -177,9 +132,11 @@ async def download_task_result(
     if not task["result"]:
         raise HTTPException(500, "Task result not available")
     
-    # Возвращаем ZIP архив
-    zip_buffer: io.BytesIO = task["result"]
+    # Удалить задачу в фоне после возврата ответа
+    background_tasks.add_task(task_manager.remove_task, task_id)
     
+    zip_buffer: io.BytesIO = task["result"]
+
     return Response(
         content=zip_buffer.getvalue(),
         media_type="application/zip",
@@ -216,6 +173,8 @@ async def create_user(
     except Exception as e:
         raise HTTPException(500, f"Failed to create user: {str(e)}")
 
+
+
 @app.get("/api/v1/admin/users", 
          response_model=List[UserResponse],
          tags=["admin"])
@@ -228,6 +187,8 @@ async def list_users(admin: dict = Depends(verify_admin)):
         raise HTTPException(403, str(e))
     except Exception as e:
         raise HTTPException(500, f"Failed to get users: {str(e)}")
+
+
 
 @app.put("/api/v1/admin/users/{username}",
          tags=["admin"])
@@ -249,6 +210,8 @@ async def update_user(
     except Exception as e:
         raise HTTPException(500, f"Failed to update user: {str(e)}")
 
+
+
 @app.delete("/api/v1/admin/users/{username}",
             tags=["admin"])
 async def delete_user(
@@ -268,83 +231,8 @@ async def delete_user(
     except Exception as e:
         raise HTTPException(500, f"Failed to delete user: {str(e)}")
 
-# ==================== TOKENS ENDPOINTS ====================
-'''
-@app.post("/admin/tokens/{username}/regenerate",
-          tags=["tokens"])
-async def regenerate_api_key(
-    username: str,
-    admin: dict = Depends(verify_admin)
-):
-    """Перегенерация API ключа для пользователя"""
-    try:
-        new_api_key = auth_manager.regenerate_api_key(username, admin)
-        
-        return {
-            "username": username,
-            "new_api_key": new_api_key,
-            "message": "API key regenerated successfully"
-        }
-        
-    except (PermissionError, ValueError) as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"Failed to regenerate API key: {str(e)}")
-'''
-# ==================== STATISTICS ENDPOINTS ====================
-'''
-@app.get("/admin/statistics",
-         tags=["statistics"])
-async def get_stats(admin: dict = Depends(verify_admin)):
-    """Получение статистики использования API"""
-    try:
-        stats = {
-            "total_tasks": len(task_manager._tasks),
-            "active_tasks": sum(1 for task in task_manager._tasks.values() 
-                              if task.get("status") == TaskStatus.PROCESSING),
-            "completed_tasks": sum(1 for task in task_manager._tasks.values() 
-                                 if task.get("status") == TaskStatus.COMPLETED),
-            "failed_tasks": sum(1 for task in task_manager._tasks.values() 
-                              if task.get("status") == TaskStatus.FAILED),
-            "total_users": len(auth_manager.get_users(admin)),
-            "active_users": len([u for u in auth_manager.get_users(admin) 
-                               if u.get("is_active", True)]),
-            "admin_users": len([u for u in auth_manager.get_users(admin) 
-                              if u.get("is_admin", False)])
-        }
-        return stats
-    except Exception as e:
-        raise HTTPException(500, f"Failed to get stats: {str(e)}")
 
-@app.get("/admin/statistics/tasks",
-         tags=["admin", "statistics"])
-async def get_tasks_statistics(admin: dict = Depends(verify_admin)):
-    """Детальная статистика по задачам"""
-    try:
-        tasks = task_manager._tasks
-        recent_tasks = sorted(
-            [task for task in tasks.values() if task.get("start_time")],
-            key=lambda x: x["start_time"],
-            reverse=True
-        )[:10]  # Последние 10 задач
-        
-        return {
-            "recent_tasks": [
-                {
-                    "task_id": task_id,
-                    "status": task.get("status"),
-                    "progress": task.get("progress", 0),
-                    "processed_files": task.get("processed_files", 0),
-                    "total_files": task.get("total_files", 0),
-                    "start_time": task.get("start_time"),
-                    "end_time": task.get("end_time")
-                }
-                for task_id, task in list(tasks.items())[-10:]  # Последние 10 по времени создания
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(500, f"Failed to get tasks statistics: {str(e)}")
-'''
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
