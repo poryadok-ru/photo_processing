@@ -1,10 +1,10 @@
-import os
 import base64
 import io
 from openai import AsyncOpenAI
 from PIL import Image
 import asyncio
 from typing import Tuple, Optional
+from interior.config import Config
 from api.logging import CustomLogger
 
 class AsyncAIClient:
@@ -12,8 +12,8 @@ class AsyncAIClient:
     
     def __init__(self):
         self.client = AsyncOpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("BASE_URL")
+            api_key=Config.API_KEY,
+            base_url=Config.BASE_URL
         )
     
     async def analyze_thematic_subcategory(self, image_data: bytes, logger: CustomLogger) -> Tuple[str, str]:
@@ -24,7 +24,7 @@ class AsyncAIClient:
         
         try:
             response = await self.client.chat.completions.create(
-                model=os.getenv("MODEL_NAME"),
+                model=Config.MODEL_NAME,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": [
@@ -52,7 +52,7 @@ class AsyncAIClient:
         
         try:
             response = await self.client.chat.completions.create(
-                model=os.getenv("IMAGE_MODEL"),
+                model=Config.IMAGE_MODEL,
                 messages=[{
                     "role": "user",
                     "content": [

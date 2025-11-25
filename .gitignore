@@ -40,3 +40,10 @@ acc_google_api/
 # Testing files
 create_admin.py
 run_api.py
+
+# Processing directories
+white/input/
+white/output/
+interior/input/
+interior/output/
+interior/temp/

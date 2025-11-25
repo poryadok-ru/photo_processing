@@ -1,30 +1,25 @@
-import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
+from core.config import config
 
 class Config:
     """Конфигурация для обработки белого фона"""
     
-    # API настройки
-    PIXIAN_API_URL = os.getenv("PIXIAN_API_URL")
-    PIXIAN_API_USER = os.getenv("PIXIAN_API_USER")
-    PIXIAN_API_KEY = os.getenv("PIXIAN_API_KEY")
-    PORADOCK_LOG_TOKEN_WHITE = os.getenv("PORADOCK_LOG_TOKEN_WHITE")
+    PIXIAN_API_URL = config.pixian.api_url
+    PIXIAN_API_USER = config.pixian.api_user
+    PIXIAN_API_KEY = config.pixian.api_key
+    PORADOCK_LOG_TOKEN_WHITE = config.pixian.log_token
     
     # Пути
-    BASE_DIR = Path(__file__).parent.parent
+    BASE_DIR = Path(__file__).parent
     INPUT_DIR = BASE_DIR / "input"
-    OUTPUT_DIR = BASE_DIR / "output_white"
+    OUTPUT_DIR = BASE_DIR / "output"
     
     # Поддерживаемые форматы изображений
     SUPPORTED_FORMATS = [".jpg", ".jpeg", ".png", ".webp"]
     
-    # Параметры API
-    BACKGROUND_COLOR = "FFFFFF"  # Белый фон
-    TEST_MODE = "true"
-    TIMEOUT = 120
+    BACKGROUND_COLOR = config.pixian.background_color
+    TEST_MODE = config.pixian.test_mode
+    TIMEOUT = config.pixian.timeout
     
     @classmethod
     def validate_config(cls):

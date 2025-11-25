@@ -71,9 +71,11 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             raise
     
     def _generate_context_prompt(self, main_category: str, subcategory: str) -> str:
-        """Генерирует промпт (синхронно, но быстро)"""
-        # Ваша существующая логика генерации промпта
-        return f"... {main_category} ... {subcategory} ..."
+        """Генерирует промпт для обработки изображения"""
+        categories = Config.get_thematic_categories()
+        description = categories.get(main_category, {}).get(subcategory, "")
+        
+        return f"Обработай изображение товара категории {main_category}, подкатегории {subcategory}. {description}. Создай профессиональное изображение для маркетплейса."
     
     def _crop_to_3_4(self, image: Image.Image) -> Image.Image:
         """Обрезает изображение до 3:4 (синхронно)"""

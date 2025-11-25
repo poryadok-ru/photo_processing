@@ -1,76 +1,44 @@
-import os
-from pathlib import Path
-from dotenv import load_dotenv
+"""
+Конфигурация для обработки интерьеров
+Использует новый сервис категорий
+"""
+from typing import Dict
+from core.config import config
+from api.services.category_service import CategoryService
 
-load_dotenv()
+# Сервис категорий
+_category_service = CategoryService()
 
-# --- Конфигурация ---
+
 class Config:
-    # API ключи
-    API_KEY = os.getenv("OPENAI_API_KEY")
-    MODEL_NAME = os.getenv("MODEL_NAME")
-    IMAGE_MODEL = os.getenv("IMAGE_MODEL")
-    BASE_URL = os.getenv("BASE_URL")
-    PORADOCK_LOG_TOKEN_INTERIOR = os.getenv("PORADOCK_LOG_TOKEN_INTERIOR")
+    """Конфигурация для обработки интерьеров"""
     
-    # Пути
-    BASE_DIR = Path(__file__).parent.parent
-    INPUT_DIR = BASE_DIR / "input"
-    OUTPUT_DIR = BASE_DIR / "output_interior"
-    TEMP_DIR = BASE_DIR / "temp_formatted"
+    API_KEY = config.openai.api_key
+    MODEL_NAME = config.openai.model_name
+    IMAGE_MODEL = config.openai.image_model
+    BASE_URL = config.openai.base_url
+    PORADOCK_LOG_TOKEN_INTERIOR = config.openai.log_token
     
-    # Создание директорий
-    INPUT_DIR.mkdir(exist_ok=True)
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    TEMP_DIR.mkdir(exist_ok=True)
+    BASE_DIR = config.app.interior_dir
+    INPUT_DIR = config.app.interior_dir / "input"
+    OUTPUT_DIR = config.app.interior_dir / "output"
+    TEMP_DIR = config.app.interior_dir / "temp"
     
-    # Тематические категории
-    THEMATIC_SUBCATEGORIES = {
-        "KITCHEN": {
-            "COOKWARE": "Кастрюли, сковороды, посуда для готовки",
-            "UTENSILS": "Столовые приборы, ножи, кухонные инструменты",
-            "APPLIANCES": "Кухонная техника, тостеры, блендеры",
-            "STORAGE": "Контейнеры, банки, системы хранения",
-            "DINNERWARE": "Тарелки, чашки, сервировочная посуда",
-            "DECOR": "Кухонный декор, полотенца, аксессуары"
-        },
-        "BATHROOM": {
-            "TOWELS": "Полотенца, банные халаты",
-            "HYGIENE": "Средства личной гигиены, мыло, шампуни",
-            "FURNITURE": "Ванная мебель, шкафчики, полки",
-            "STORAGE": "Органайзеры, корзины, системы хранения",
-            "ACCESSORIES": "Держатели, крючки, аксессуары",
-            "CLEANING": "Средства для уборки, щетки"
-        },
-        "LIVING_ROOM": {
-            "FURNITURE": "Диваны, кресла, столы, стеллажи",
-            "LIGHTING": "Лампы, светильники, торшеры",
-            "DECOR": "Декор, вазы, картины, зеркала",
-            "TEXTILES": "Подушки, покрывала, ковры",
-            "STORAGE": "Полки, тумбы, системы хранения",
-            "ELECTRONICS": "Телевизоры, аудиосистемы"
-        },
-        "BEDROOM": {
-            "BEDDING": "Постельное белье, подушки, одеяла",
-            "FURNITURE": "Кровати, тумбочки, шкафы",
-            "LIGHTING": "Прикроватные лампы, светильники",
-            "DECOR": "Декор, картины, аксессуары",
-            "STORAGE": "Комоды, органайзеры, коробки",
-            "TEXTILES": "Пледы, покрывала, коврики"
-        },
-        "OFFICE": {
-            "FURNITURE": "Столы, стулья, полки",
-            "ORGANIZATION": "Органайзеры, лотки, системы хранения",
-            "STATIONERY": "Канцелярия, ручки, блокноты",
-            "TECH": "Компьютерные аксессуары, настольные лампы",
-            "DECOR": "Офисный декор, растения, картины"
-        },
-        "HOLIDAY": {
-            "CHRISTMAS": "Ёлочные игрушки, рождественские украшения, гирлянды",
-            "EASTER": "Пасхальные украшения, фигурки, корзины, яйца",
-            "HALLOWEEN": "Хэллоуинский декор, тыквы, свечи, тематические фигурки",
-            "NEW_YEAR": "Украшения к Новому году, мишура, шары, звёзды",
-            "VALENTINE": "Украшения ко Дню Святого Валентина, сердечки, свечи",
-            "GENERAL": "Праздничный декор и универсальные украшения"
-        }
-    }
+    @classmethod
+    def get_thematic_categories(cls) -> Dict[str, Dict[str, str]]:
+        """Тематические категории - загружаются из БД через сервис"""
+        return _category_service.get_all_categories()
+    
+    @classmethod
+    def reload_categories(cls):
+        """Перезагружает категории из БД"""
+        _category_service.reload_cache()
+
+
+class ThematicCategoriesDescriptor:
+    """Дескриптор для доступа к категориям через атрибут"""
+    def __get__(self, obj, objtype=None):
+        return Config.get_thematic_categories()
+
+
+Config.THEMATIC_SUBCATEGORIES = ThematicCategoriesDescriptor()

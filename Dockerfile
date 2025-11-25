@@ -27,7 +27,7 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 app
 
 WORKDIR /app
 
-RUN mkdir -p /app/data /app/logs /app/input /app/output_interior /app/output_white /app/temp_api /app/temp_formatted \
+RUN mkdir -p /app/white/input /app/white/output /app/interior/input /app/interior/output /app/interior/temp \
     && chown -R app:app /app
 
 COPY --chown=app:app . .
@@ -42,4 +42,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
