@@ -13,11 +13,15 @@ class CustomLogger:
             token = config.pixian.log_token
         else: 
             token = config.openai.log_token
-            
+        
+        # Если токен не задан, используем заглушку (для тестирования)
         if not token:
-            raise ValueError(f"Token for {processing_type} processing not found")
-            
-        self.logger = Log(token=token, auto_host=True)
+            import logging
+            self.logger = logging.getLogger(f"photo_processing.{processing_type}")
+            self._use_std_logging = True
+        else:
+            self.logger = Log(token=token, auto_host=True)
+            self._use_std_logging = False
     
     def info(self, msg: str):
         self.logger.info(msg)
@@ -36,16 +40,28 @@ class CustomLogger:
     
     def finish_success(self, **kwargs):
         period_to = datetime.now(timezone.utc)
-        self.logger.finish_success(self.period_from, period_to, **kwargs)
+        if self._use_std_logging:
+            self.logger.info(f"SUCCESS: {kwargs}")
+        else:
+            self.logger.finish_success(self.period_from, period_to, **kwargs)
     
     def finish_warning(self, **kwargs):
         period_to = datetime.now(timezone.utc)
-        self.logger.finish_warning(self.period_from, period_to, **kwargs)
+        if self._use_std_logging:
+            self.logger.warning(f"WARNING: {kwargs}")
+        else:
+            self.logger.finish_warning(self.period_from, period_to, **kwargs)
     
     def finish_error(self, **kwargs):
         period_to = datetime.now(timezone.utc)
-        self.logger.finish_error(self.period_from, period_to, **kwargs)
+        if self._use_std_logging:
+            self.logger.error(f"ERROR: {kwargs}")
+        else:
+            self.logger.finish_error(self.period_from, period_to, **kwargs)
     
     def finish_log(self, status, **kwargs):
         period_to = datetime.now(timezone.utc)
-        self.logger.finish_log(self.period_from, period_to, status=status, **kwargs)
+        if self._use_std_logging:
+            self.logger.info(f"FINISH [{status}]: {kwargs}")
+        else:
+            self.logger.finish_log(self.period_from, period_to, status=status, **kwargs)
