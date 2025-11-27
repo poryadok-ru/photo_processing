@@ -97,14 +97,7 @@ docker build -t photo-processing:latest .
 
 2. Запустите контейнер:
 ```bash
-docker run -d \
-  --name photo-processing \
-  -p 8000:8000 \
-  -e DATABASE_URL=postgresql://user:password@host:5432/dbname \
-  -e OPENAI_API_KEY=your_key \
-  -e PIXIAN_API_USER=your_user \
-  -e PIXIAN_API_KEY=your_key \
-  photo-processing:latest
+docker run -d --name photo-processing -p 8000:8000 --env-file .env photo-processing:latest
 ```
 
 Или используйте `docker-compose` (если есть):
