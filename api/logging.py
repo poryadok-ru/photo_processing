@@ -1,23 +1,27 @@
-import os
-from datetime import datetime
+from datetime import datetime, timezone
 from log import Log
+from core.config import config
 
 class CustomLogger:
     """Кастомный логгер для API с поддержкой двух типов обработки"""
     
     def __init__(self, processing_type: str):
         self.processing_type = processing_type
-        self.period_from = datetime.now()
+        self.period_from = datetime.now(timezone.utc)
         
         if processing_type == "white":
-            token = os.getenv("PORADOCK_LOG_TOKEN_WHITE")
+            token = config.pixian.log_token
         else: 
-            token = os.getenv("PORADOCK_LOG_TOKEN_INTERIOR")
-            
+            token = config.openai.log_token
+        
+        # Если токен не задан, используем заглушку (для тестирования)
         if not token:
-            raise ValueError(f"Token for {processing_type} processing not found")
-            
-        self.logger = Log(token=token, auto_host=True)
+            import logging
+            self.logger = logging.getLogger(f"photo_processing.{processing_type}")
+            self._use_std_logging = True
+        else:
+            self.logger = Log(token=token, auto_host=True)
+            self._use_std_logging = False
     
     def info(self, msg: str):
         self.logger.info(msg)
@@ -35,17 +39,29 @@ class CustomLogger:
         self.logger.critical(msg)
     
     def finish_success(self, **kwargs):
-        period_to = datetime.now()
-        self.logger.finish_success(self.period_from, period_to, **kwargs)
+        period_to = datetime.now(timezone.utc)
+        if self._use_std_logging:
+            self.logger.info(f"SUCCESS: {kwargs}")
+        else:
+            self.logger.finish_success(self.period_from, period_to, **kwargs)
     
     def finish_warning(self, **kwargs):
-        period_to = datetime.now()
-        self.logger.finish_warning(self.period_from, period_to, **kwargs)
+        period_to = datetime.now(timezone.utc)
+        if self._use_std_logging:
+            self.logger.warning(f"WARNING: {kwargs}")
+        else:
+            self.logger.finish_warning(self.period_from, period_to, **kwargs)
     
     def finish_error(self, **kwargs):
-        period_to = datetime.now()
-        self.logger.finish_error(self.period_from, period_to, **kwargs)
+        period_to = datetime.now(timezone.utc)
+        if self._use_std_logging:
+            self.logger.error(f"ERROR: {kwargs}")
+        else:
+            self.logger.finish_error(self.period_from, period_to, **kwargs)
     
     def finish_log(self, status, **kwargs):
-        period_to = datetime.now()
-        self.logger.finish_log(self.period_from, period_to, status=status, **kwargs)
+        period_to = datetime.now(timezone.utc)
+        if self._use_std_logging:
+            self.logger.info(f"FINISH [{status}]: {kwargs}")
+        else:
+            self.logger.finish_log(self.period_from, period_to, status=status, **kwargs)

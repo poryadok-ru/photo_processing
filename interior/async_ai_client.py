@@ -1,10 +1,10 @@
-import os
 import base64
 import io
 from openai import AsyncOpenAI
 from PIL import Image
 import asyncio
 from typing import Tuple, Optional
+from interior.config import Config
 from api.logging import CustomLogger
 
 class AsyncAIClient:
@@ -12,19 +12,35 @@ class AsyncAIClient:
     
     def __init__(self):
         self.client = AsyncOpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url=os.getenv("BASE_URL")
+            api_key=Config.API_KEY,
+            base_url=Config.BASE_URL
         )
     
     async def analyze_thematic_subcategory(self, image_data: bytes, logger: CustomLogger) -> Tuple[str, str]:
         """Асинхронно анализирует тематику товара"""
         base64_image = base64.b64encode(image_data).decode('utf-8')
         
-        system_prompt = """Ты эксперт по категоризации товаров маркетплейса..."""  # ваш промпт
+        system_prompt = """Ты эксперт по категоризации товаров маркетплейса.
+        Твоя задача — определить категорию и подкатегорию товара по фото.
+        Ответ строго в формате: КАТЕГОРИЯ|ПОДКАТЕГОРИЯ
+        
+        Особое правило:
+        - Если изображены праздничные украшения (ёлочные игрушки, новогодние, пасхальные, хэллоуинские предметы и т.п.), 
+          отнеси их к категории HOLIDAY с соответствующей подкатегорией:
+          CHRISTMAS, EASTER, HALLOWEEN, NEW_YEAR, VALENTINE или GENERAL.
+        
+        Остальные доступные категории и подкатегории:
+        KITCHEN - COOKWARE, UTENSILS, APPLIANCES, STORAGE, DINNERWARE, DECOR
+        BATHROOM - TOWELS, HYGIENE, FURNITURE, STORAGE, ACCESSORIES, CLEANING  
+        LIVING_ROOM - FURNITURE, LIGHTING, DECOR, TEXTILES, STORAGE, ELECTRONICS
+        BEDROOM - BEDDING, FURNITURE, LIGHTING, DECOR, STORAGE, TEXTILES
+        GARDEN - FURNITURE, TOOLS, DECOR, PLANTS, LIGHTING, STORAGE
+        OFFICE - FURNITURE, ORGANIZATION, STATIONERY, TECH, DECOR
+        HOLIDAY - CHRISTMAS, EASTER, HALLOWEEN, NEW_YEAR, VALENTINE, GENERAL"""
         
         try:
             response = await self.client.chat.completions.create(
-                model=os.getenv("MODEL_NAME"),
+                model=Config.MODEL_NAME,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": [
@@ -52,7 +68,7 @@ class AsyncAIClient:
         
         try:
             response = await self.client.chat.completions.create(
-                model=os.getenv("IMAGE_MODEL"),
+                model=Config.IMAGE_MODEL,
                 messages=[{
                     "role": "user",
                     "content": [

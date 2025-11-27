@@ -1,19 +1,19 @@
 import aiohttp
 import asyncio
 from typing import Optional, Tuple
-import os
+from white.config import Config
 from api.logging import CustomLogger
 
 class AsyncPixianClient:
     """Асинхронный клиент для Pixian.AI API"""
     
     def __init__(self):
-        self.api_url = "https://api.pixian.ai/api/v2/remove-background"
+        self.api_url = Config.PIXIAN_API_URL or "https://api.pixian.ai/api/v2/remove-background"
         self.auth = aiohttp.BasicAuth(
-            login=os.getenv("PIXIAN_API_USER"),
-            password=os.getenv("PIXIAN_API_KEY")
+            login=Config.PIXIAN_API_USER,
+            password=Config.PIXIAN_API_KEY
         )
-        self.timeout = aiohttp.ClientTimeout(total=120)
+        self.timeout = aiohttp.ClientTimeout(total=Config.TIMEOUT)
     
     async def remove_background(self, image_data: bytes, logger: CustomLogger) -> Tuple[bool, Optional[bytes], Optional[str]]:
         """
@@ -29,8 +29,9 @@ class AsyncPixianClient:
         try:
             form_data = aiohttp.FormData()
             form_data.add_field('image', image_data, filename='image.jpg', content_type='image/jpeg')
-            form_data.add_field('background.color', 'FFFFFF')
-            form_data.add_field('test', 'true')
+            form_data.add_field('background.color', Config.BACKGROUND_COLOR)
+            form_data.add_field('result.target_size', Config.TARGET_SIZE)
+            form_data.add_field('test', Config.TEST_MODE)
             
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 async with session.post(

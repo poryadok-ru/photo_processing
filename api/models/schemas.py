@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from datetime import datetime
@@ -10,11 +10,7 @@ class TaskStatus(str, Enum):
     FAILED = "failed"
 
 class ProcessingResponse(BaseModel):
-    success: bool
-    message: str
-    file_count: Optional[int] = 0
-    task_id: Optional[str] = None
-    error: Optional[str] = None
+    task_id: str = Field(..., description="ID задачи для отслеживания статуса")
 
 class TaskStatusResponse(BaseModel):
     task_id: str
