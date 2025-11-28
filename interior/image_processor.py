@@ -132,8 +132,10 @@ class ImageProcessor:
             right = width
             bottom = top + new_height
         
+        target_size=(1800, 2400)
         cropped_image = image.crop((left, top, right, bottom))
-        return cropped_image
+        resized_image = cropped_image.resize(target_size, resample=Image.LANCZOS)
+        return resized_image
 
     def format_image_3_4(self, input_path, output_path, logger):
         """Приводит изображение к формату 3:4 с граничащими цветами"""

@@ -20,7 +20,23 @@ class AsyncAIClient:
         """Асинхронно анализирует тематику товара"""
         base64_image = base64.b64encode(image_data).decode('utf-8')
         
-        system_prompt = """Ты эксперт по категоризации товаров маркетплейса..."""  # ваш промпт
+        system_prompt = """Ты эксперт по категоризации товаров маркетплейса.
+        Твоя задача — определить категорию и подкатегорию товара по фото.
+        Ответ строго в формате: КАТЕГОРИЯ|ПОДКАТЕГОРИЯ
+        
+        Особое правило:
+        - Если изображены праздничные украшения (ёлочные игрушки, новогодние, пасхальные, хэллоуинские предметы и т.п.), 
+          отнеси их к категории HOLIDAY с соответствующей подкатегорией:
+          CHRISTMAS, EASTER, HALLOWEEN, NEW_YEAR, VALENTINE или GENERAL.
+        
+        Остальные доступные категории и подкатегории:
+        KITCHEN - COOKWARE, UTENSILS, APPLIANCES, STORAGE, DINNERWARE, DECOR
+        BATHROOM - TOWELS, HYGIENE, FURNITURE, STORAGE, ACCESSORIES, CLEANING  
+        LIVING_ROOM - FURNITURE, LIGHTING, DECOR, TEXTILES, STORAGE, ELECTRONICS
+        BEDROOM - BEDDING, FURNITURE, LIGHTING, DECOR, STORAGE, TEXTILES
+        GARDEN - FURNITURE, TOOLS, DECOR, PLANTS, LIGHTING, STORAGE
+        OFFICE - FURNITURE, ORGANIZATION, STATIONERY, TECH, DECOR
+        HOLIDAY - CHRISTMAS, EASTER, HALLOWEEN, NEW_YEAR, VALENTINE, GENERAL"""
         
         try:
             response = await self.client.chat.completions.create(

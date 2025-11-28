@@ -59,4 +59,3 @@ class TaskService:
             result["result"] = io.BytesIO(task.result_data)
         
         return result
-

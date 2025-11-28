@@ -1,0 +1,109 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        run: |
+          docker build -t photo_processing:latest .
+      
+      - name: Save Docker image
+        run: |
+          docker save photo_processing:latest | gzip > photo_processing.tar.gz
+      
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          source: "photo_processing.tar.gz"
+          target: "/opt/photo_processing"
+          strip_components: 0
+      
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            cd /opt/photo_processing
+            
+            # Создаем .env файл
+            cat > .env << EOF
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            PIXIAN_API_USER=${{ secrets.PIXIAN_API_USER }}
+            PIXIAN_API_KEY=${{ secrets.PIXIAN_API_KEY }}
+            PORADOCK_LOG_TOKEN_INTERIOR=${{ secrets.PORADOCK_LOG_TOKEN_INTERIOR }}
+            PORADOCK_LOG_TOKEN_WHITE=${{ secrets.PORADOCK_LOG_TOKEN_WHITE }}
+            SQL_DEBUG=${{ secrets.SQL_DEBUG }}
+            EOF
+            
+            # Загружаем Docker образ
+            docker load < photo_processing.tar.gz
+            
+            # Останавливаем старый контейнер
+            docker stop photo_processing 2>/dev/null || true
+            docker rm photo_processing 2>/dev/null || true
+            
+            # Запускаем новый контейнер
+            docker run -d --name photo-processing -p 8002:8002 --env-file .env photo-processing:latest
+            
+            # Ждем запуска контейнера
+            sleep 5
+            
+            # Проверяем что контейнер работает
+            if ! docker ps | grep -q photo_processing; then
+              echo "ERROR: Container is not running"
+              docker logs photo_processing --tail 50
+              exit 1
+            fi
+            
+            # Проверяем health endpoint
+            echo "Checking health endpoint..."
+            for i in {1..10}; do
+              if curl -f -s http://localhost:8002/health > /dev/null 2>&1; then
+                echo "Health check passed!"
+                break
+              fi
+              if [ $i -eq 10 ]; then
+                echo "ERROR: Health check failed after 10 attempts"
+                docker logs photo_processing --tail 50
+                exit 1
+              fi
+              sleep 2
+            done
+            
+            # Показываем логи
+            docker logs photo_processing --tail 20
+            
+            # Очищаем старые образы (оставляем только последние 2)
+            docker images photo_processing --format "{{.ID}}" | tail -n +3 | xargs -r docker rmi 2>/dev/null || true
+            
+            echo "Deployment successful!"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f photo_processing.tar.gz

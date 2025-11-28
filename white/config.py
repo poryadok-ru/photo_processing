@@ -20,6 +20,7 @@ class Config:
     BACKGROUND_COLOR = config.pixian.background_color
     TEST_MODE = config.pixian.test_mode
     TIMEOUT = config.pixian.timeout
+    TARGET_SIZE = config.pixian.target_size
     
     @classmethod
     def validate_config(cls):

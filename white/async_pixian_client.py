@@ -30,6 +30,7 @@ class AsyncPixianClient:
             form_data = aiohttp.FormData()
             form_data.add_field('image', image_data, filename='image.jpg', content_type='image/jpeg')
             form_data.add_field('background.color', Config.BACKGROUND_COLOR)
+            form_data.add_field('result.target_size', Config.TARGET_SIZE)
             form_data.add_field('test', Config.TEST_MODE)
             
             async with aiohttp.ClientSession(timeout=self.timeout) as session:

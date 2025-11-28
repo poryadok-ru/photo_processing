@@ -56,6 +56,8 @@ async def download_task_result(
     handler = TaskHandler(task_service=task_service)
     result = await handler.download_task_result(task_id, user)
     
+    task_service.delete_task(task_id)
+
     return Response(
         content=result.getvalue(),
         media_type="application/zip",
@@ -63,4 +65,3 @@ async def download_task_result(
             "Content-Disposition": f"attachment; filename=processed_{task_id}.zip",
         }
     )
-

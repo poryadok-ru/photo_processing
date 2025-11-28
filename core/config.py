@@ -47,23 +47,24 @@ class AppConfig:
 @dataclass
 class OpenAIConfig:
     """Конфигурация OpenAI API"""
-    api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY") or "")
-    model_name: str = field(default_factory=lambda: os.getenv("MODEL_NAME", "gpt-4-vision-preview"))
-    image_model: str = field(default_factory=lambda: os.getenv("IMAGE_MODEL", "gemini-pro-vision"))
-    base_url: str = field(default_factory=lambda: os.getenv("BASE_URL", "https://api.openai.com/v1"))
-    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_INTERIOR") or "")
+    api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
+    model_name: str = field(default_factory=lambda: os.getenv("MODEL_NAME", "openai/gpt-4.1-mini"))
+    image_model: str = field(default_factory=lambda: os.getenv("IMAGE_MODEL", "gemini-2.5-flash-image"))
+    base_url: str = field(default_factory=lambda: os.getenv("BASE_URL", "https://litellm.poryadok.ru"))
+    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_INTERIOR"))
 
 
 @dataclass
 class PixianConfig:
     """Конфигурация Pixian API"""
     api_url: str = field(default_factory=lambda: os.getenv("PIXIAN_API_URL", "https://api.pixian.ai/api/v2/remove-background"))
-    api_user: str = field(default_factory=lambda: os.getenv("PIXIAN_API_USER") or "")
-    api_key: str = field(default_factory=lambda: os.getenv("PIXIAN_API_KEY") or "")
-    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_WHITE") or "")
+    api_user: str = field(default_factory=lambda: os.getenv("PIXIAN_API_USER"))
+    api_key: str = field(default_factory=lambda: os.getenv("PIXIAN_API_KEY"))
+    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_WHITE"))
     background_color: str = field(default_factory=lambda: os.getenv("PIXIAN_BACKGROUND_COLOR", "FFFFFF"))
     test_mode: str = field(default_factory=lambda: os.getenv("PIXIAN_TEST_MODE", "true"))
     timeout: int = field(default_factory=lambda: int(os.getenv("PIXIAN_TIMEOUT", 120)))
+    target_size: str = field(default_factory=lambda: os.getenv("PIXIAN_TARGET_SIZE", "1800  2400"))
 
 
 @dataclass
@@ -78,4 +79,3 @@ class Config:
 
 
 config = Config()
-
