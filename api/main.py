@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Image Processing API",
     description="API для обработки изображений",
-    version="3.0.0"
+    version="3.0.0",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
 app.add_middleware(
