@@ -61,7 +61,6 @@ jobs:
             
             # Создаем .env файл
             cat > .env << EOF
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             PIXIAN_API_USER=${{ secrets.PIXIAN_API_USER }}

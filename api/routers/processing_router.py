@@ -1,7 +1,7 @@
 """
 Роутер для обработки изображений
 """
-from fastapi import APIRouter, Depends, BackgroundTasks, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, BackgroundTasks, UploadFile, File
 from fastapi.responses import Response
 from typing import List
 from api.services.task_service import TaskService
@@ -26,8 +26,7 @@ async def process_parallel(
     return await handler.process_parallel(
         background_tasks=background_tasks,
         white_bg=white_bg,
-        files=files,
-        user=user
+        files=files
     )
 
 
@@ -70,14 +69,13 @@ async def download_task_result(
 @router.post("/processing/remove_background")
 async def remove_background(
     file: UploadFile = File(...),
-    user: dict = Depends(verify_user),
-    task_service: TaskService = Depends(get_task_service)
+    user: dict = Depends(verify_user)
 ):
     """Удаляет фон с одного изображения"""
-    from api.handlers.processing_handler import ProcessingHandler
+    from api.processors.async_white_processor import AsyncWhiteProcessor
     
-    handler = ProcessingHandler(task_service=task_service)
-    processed_data, output_filename = await handler.remove_background_single(file)
+    processor = AsyncWhiteProcessor()
+    processed_data, output_filename = await processor.process_single(file)
     
     return Response(
         content=processed_data,
@@ -91,14 +89,13 @@ async def remove_background(
 @router.post("/processing/generate_image")
 async def generate_image(
     file: UploadFile = File(...),
-    user: dict = Depends(verify_user),
-    task_service: TaskService = Depends(get_task_service)
+    user: dict = Depends(verify_user)
 ):
     """Генерирует изображение из одного файла"""
-    from api.handlers.processing_handler import ProcessingHandler
+    from api.processors.async_interior_processor import AsyncInteriorProcessor
     
-    handler = ProcessingHandler(task_service=task_service)
-    processed_data, output_filename = await handler.generate_image_single(file)
+    processor = AsyncInteriorProcessor()
+    processed_data, output_filename = await processor.process_single(file)
     
     return Response(
         content=processed_data,
