@@ -65,3 +65,45 @@ async def download_task_result(
             "Content-Disposition": f"attachment; filename=processed_{task_id}.zip",
         }
     )
+
+
+@router.post("/processing/remove_background")
+async def remove_background(
+    file: UploadFile = File(...),
+    user: dict = Depends(verify_user),
+    task_service: TaskService = Depends(get_task_service)
+):
+    """Удаляет фон с одного изображения"""
+    from api.handlers.processing_handler import ProcessingHandler
+    
+    handler = ProcessingHandler(task_service=task_service)
+    processed_data, output_filename = await handler.remove_background_single(file)
+    
+    return Response(
+        content=processed_data,
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f"attachment; filename={output_filename}",
+        }
+    )
+
+
+@router.post("/processing/generate_image")
+async def generate_image(
+    file: UploadFile = File(...),
+    user: dict = Depends(verify_user),
+    task_service: TaskService = Depends(get_task_service)
+):
+    """Генерирует изображение из одного файла"""
+    from api.handlers.processing_handler import ProcessingHandler
+    
+    handler = ProcessingHandler(task_service=task_service)
+    processed_data, output_filename = await handler.generate_image_single(file)
+    
+    return Response(
+        content=processed_data,
+        media_type="image/jpeg",
+        headers={
+            "Content-Disposition": f"attachment; filename={output_filename}",
+        }
+    )
