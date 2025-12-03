@@ -93,4 +93,8 @@ class AsyncAIClient:
             
         except Exception as e:
             logger.error(f"Ошибка генерации изображения: {e}")
+            logger.error(f"Exception type: {type(e)}, details: {str(e)}")
+            if hasattr(e, 'response'):
+                logger.error(f"Response status: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
+                logger.error(f"Response body: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
             return None
