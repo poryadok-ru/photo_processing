@@ -80,7 +80,7 @@ class AsyncAIClient:
             )
             
             msg = response.choices[0].message
-            logger.info(f"API response: {msg}")
+            print(f"API response: {msg}")
             
             if hasattr(msg, "image") and msg.image and "url" in msg.image:
                 img_url = msg.image["url"]
@@ -88,13 +88,15 @@ class AsyncAIClient:
                     base64_data = img_url.split("base64,")[1]
                     return base64.b64decode(base64_data)
             
-            logger.error("В ответе не найдено изображение")
+            print("В ответе не найдено изображение")
             return None
             
         except Exception as e:
-            logger.error(f"Ошибка генерации изображения: {e}")
-            logger.error(f"Exception type: {type(e)}, details: {str(e)}")
+            print(f"Ошибка генерации изображения: {e}")
+            print(f"Exception type: {type(e)}, details: {str(e)}")
             if hasattr(e, 'response'):
-                logger.error(f"Response status: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
-                logger.error(f"Response body: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
+                print(f"Response status: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
+                print(f"Response body: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
+            import traceback
+            traceback.print_exc()
             return None

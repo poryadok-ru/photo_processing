@@ -14,7 +14,6 @@ class CustomLogger:
         else: 
             token = config.openai.log_token
         
-        # Если токен не задан, используем заглушку (для тестирования)
         if not token:
             import logging
             self.logger = logging.getLogger(f"photo_processing.{processing_type}")
