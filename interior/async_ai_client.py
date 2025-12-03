@@ -80,6 +80,8 @@ class AsyncAIClient:
             )
             
             msg = response.choices[0].message
+            logger.info(f"API response: {msg}")
+            
             if hasattr(msg, "image") and msg.image and "url" in msg.image:
                 img_url = msg.image["url"]
                 if "base64," in img_url:
