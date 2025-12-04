@@ -63,7 +63,7 @@ class AsyncAIClient:
             return "LIVING_ROOM", "DECOR"
     
     async def edit_image_with_gemini(self, image_data: bytes, prompt: str, logger: CustomLogger) -> Optional[bytes]:
-        """Асинхронно генерирует изображение"""
+        """Асинхронно генерирует изображение (совместимость с Gemini 2.5)"""
         base64_image = base64.b64encode(image_data).decode('utf-8')
         
         try:
@@ -80,23 +80,38 @@ class AsyncAIClient:
             )
             
             msg = response.choices[0].message
-            print(f"API response: {msg}")
             
-            if hasattr(msg, "image") and msg.image and "url" in msg.image:
-                img_url = msg.image["url"]
-                if "base64," in img_url:
-                    base64_data = img_url.split("base64,")[1]
-                    return base64.b64decode(base64_data)
+            # Пробуем извлечь изображение из разных возможных полей
+            img_url = None
+            
+            # Новый формат Gemini 2.5
+            if hasattr(msg, "images") and msg.images:
+                img_obj = msg.images[0] if isinstance(msg.images, list) and len(msg.images) > 0 else None
+                if img_obj:
+                    if isinstance(img_obj, dict):
+                        img_url = img_obj.get('image_url', {}).get('url', img_obj.get('url'))
+                    elif hasattr(img_obj, 'url'):
+                        img_url = img_obj.url
+                    elif isinstance(img_obj, str):
+                        img_url = img_obj
+            
+            # Старый формат (для обратной совместимости)
+            if not img_url and hasattr(msg, "image") and msg.image:
+                if isinstance(msg.image, dict):
+                    img_url = msg.image.get("url")
+                elif hasattr(msg.image, "url"):
+                    img_url = msg.image.url
+            
+            # Декодируем если нашли URL
+            if img_url and "base64," in img_url:
+                base64_data = img_url.split("base64,")[1]
+                return base64.b64decode(base64_data)
             
             print("В ответе не найдено изображение")
             return None
             
         except Exception as e:
             print(f"Ошибка генерации изображения: {e}")
-            print(f"Exception type: {type(e)}, details: {str(e)}")
-            if hasattr(e, 'response'):
-                print(f"Response status: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
-                print(f"Response body: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
             import traceback
             traceback.print_exc()
             return None
