@@ -17,7 +17,8 @@ class AsyncWhiteProcessor(AsyncBaseProcessor):
     async def process_single(self, file: UploadFile) -> Tuple[bytes, str]:
         """Обрабатывает одно изображение"""
         logger = CustomLogger("white")
-        
+        processing_type_name = "white_background"
+
         try:
             logger.info(f"Начало обработки белого фона: {file.filename}")
             
@@ -35,17 +36,22 @@ class AsyncWhiteProcessor(AsyncBaseProcessor):
                 raise Exception(f"Processing failed: {error_msg}")
             
             output_filename = f"{file.filename.split('.')[0]}_white_test.png"
-            logger.info(f"Успешно обработан: {file.filename}")
+            logger.info(f"{processing_type_name} | Успешно обработан: {file.filename}")
             logger.finish_success(
                 filename=file.filename,
+                processing_type=processing_type_name,
                 processed_filename=output_filename
+
             )
             
             return processed_data, output_filename
             
         except Exception as e:
-            logger.error(f"Ошибка при обработке {file.filename}: {e}")
-            logger.finish_error(error=str(e))
+            logger.error(f"{processing_type_name} | Ошибка при обработке {file.filename}: {e}")
+            logger.finish_error(
+                processing_type=processing_type_name,
+                error=str(e)
+            )
             raise
     
     async def process_batch(self, files: List[UploadFile]) -> io.BytesIO:

@@ -24,6 +24,8 @@ class AppConfig:
     white_dir: Path = field(init=False)
     interior_dir: Path = field(init=False)
     
+    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN"))
+
     max_file_size: int = field(default_factory=lambda: int(os.getenv("MAX_FILE_SIZE", 10 * 1024 * 1024))) 
     max_files_count: int = field(default_factory=lambda: int(os.getenv("MAX_FILES_COUNT", 50)))
     allowed_content_types: Set[str] = field(default_factory=lambda: {
@@ -51,7 +53,7 @@ class OpenAIConfig:
     model_name: str = field(default_factory=lambda: os.getenv("MODEL_NAME", "openai/gpt-4.1-mini"))
     image_model: str = field(default_factory=lambda: os.getenv("IMAGE_MODEL", "openrouter-gemini-2.5-flash-lite"))
     base_url: str = field(default_factory=lambda: os.getenv("BASE_URL", "https://litellm.poryadok.ru"))
-    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_INTERIOR"))
+    #log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_INTERIOR"))
 
 
 @dataclass
@@ -60,9 +62,9 @@ class PixianConfig:
     api_url: str = field(default_factory=lambda: os.getenv("PIXIAN_API_URL", "https://api.pixian.ai/api/v2/remove-background"))
     api_user: str = field(default_factory=lambda: os.getenv("PIXIAN_API_USER"))
     api_key: str = field(default_factory=lambda: os.getenv("PIXIAN_API_KEY"))
-    log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_WHITE"))
+    #log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_WHITE"))
     background_color: str = field(default_factory=lambda: os.getenv("PIXIAN_BACKGROUND_COLOR", "FFFFFF"))
-    test_mode: str = field(default_factory=lambda: os.getenv("PIXIAN_TEST_MODE", "true"))
+    test_mode: str = field(default_factory=lambda: os.getenv("PIXIAN_TEST_MODE", "false"))
     timeout: int = field(default_factory=lambda: int(os.getenv("PIXIAN_TIMEOUT", 120)))
     target_size: str = field(default_factory=lambda: os.getenv("PIXIAN_TARGET_SIZE", "1800  2400"))
 

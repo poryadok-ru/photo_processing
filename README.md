@@ -51,29 +51,34 @@ cp .env.example .env
 
 5. Настройте переменные окружения в `.env`:
 ```env
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-MAX_FILE_SIZE=10485760
-MAX_FILES_COUNT=50
-TASK_CLEANUP_INTERVAL_HOURS=1
-TASK_MAX_AGE_HOURS=24
+# ============================================
+# Конфигурация базы данных PostgreSQL
+# ============================================
+# Формат: postgresql://user:password@host:port/database
+DATABASE_URL=postgresql://user:password@host:5432/database_name
 
-# OpenAI/Gemini для Interior обработки
-OPENAI_API_KEY=your_openai_key
-MODEL_NAME=gpt-4-vision-preview
-IMAGE_MODEL=gemini-pro-vision
-BASE_URL=https://api.openai.com/v1
-PORADOCK_LOG_TOKEN_INTERIOR=your_token
+# ============================================
+# OpenAI API (для обработки интерьеров)
+# ============================================
+OPENAI_API_KEY=sk-your-openai-api-key-here
+MODEL_NAME=openai/gpt-4.1-mini
+IMAGE_MODEL=gemini-2.5-flash-image
 
-# Pixian для White Background обработки
-PIXIAN_API_URL=https://api.pixian.ai/api/v2/remove-background
-PIXIAN_API_USER=your_user
-PIXIAN_API_KEY=your_key
-PIXIAN_BACKGROUND_COLOR=FFFFFF
-PIXIAN_TEST_MODE=true
-PIXIAN_TIMEOUT=120
-PORADOCK_LOG_TOKEN_WHITE=your_token
+# ============================================
+# Pixian API (для обработки белого фона)
+# ============================================
+PIXIAN_API_USER=your-pixian-api-user
+PIXIAN_API_KEY=your-pixian-api-key
 
-# Опционально
+# ============================================
+# Логирование (Poradock Logging API)
+# ============================================
+PORADOCK_LOG_TOKEN=your-interior-log-token-uuid
+
+# ============================================
+# Опциональные настройки
+# ============================================
+# Включить логирование SQL запросов (true/false)
 SQL_DEBUG=false
 ```
 

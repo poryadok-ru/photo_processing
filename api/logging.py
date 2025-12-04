@@ -9,10 +9,7 @@ class CustomLogger:
         self.processing_type = processing_type
         self.period_from = datetime.now(timezone.utc)
         
-        if processing_type == "white":
-            token = config.pixian.log_token
-        else: 
-            token = config.openai.log_token
+        token = config.app.log_token
         
         if not token:
             import logging

@@ -7,7 +7,7 @@ class Config:
     PIXIAN_API_URL = config.pixian.api_url
     PIXIAN_API_USER = config.pixian.api_user
     PIXIAN_API_KEY = config.pixian.api_key
-    PORADOCK_LOG_TOKEN_WHITE = config.pixian.log_token
+    #PORADOCK_LOG_TOKEN_WHITE = config.app.log_token
     
     # Пути
     BASE_DIR = Path(__file__).parent

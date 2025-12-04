@@ -22,6 +22,7 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
         """Обрабатывает одно изображение для интерьера (с корректным препроцессингом!)"""
         logger = CustomLogger("interior")
         img_proc = ImageProcessor()  # СТАТИЧЕСКИЕ методы, можно не создавать экземпляр
+        processing_type_name = "interior"
         try:
             logger.info(f"Начало обработки интерьера: {file.filename}")
 
@@ -80,17 +81,21 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             processed_data = output_buffer.getvalue()
 
             output_filename = f"{file.filename.split('.')[0]}_in_{main_category.lower()}.jpg"
-            logger.info(f"Успешно обработан: {file.filename}")
+            logger.info(f"{processing_type_name} | Успешно обработан: {file.filename}")
             logger.finish_success(
                 filename=file.filename,
+                processing_type=processing_type_name,
                 category=main_category,
                 subcategory=subcategory
             )
             return processed_data, output_filename
 
         except Exception as e:
-            logger.error(f"Ошибка при обработке {file.filename}: {e}")
-            logger.finish_error(error=str(e))
+            logger.error(f"{processing_type_name} | Ошибка при обработке {file.filename}: {e}")
+            logger.finish_error(
+                processing_type=processing_type_name,
+                error=str(e)
+            )
             raise
     
     def _generate_context_prompt(self, main_category: str, subcategory: str) -> str:

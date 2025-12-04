@@ -17,7 +17,7 @@ class Config:
     MODEL_NAME = config.openai.model_name
     IMAGE_MODEL = config.openai.image_model
     BASE_URL = config.openai.base_url
-    PORADOCK_LOG_TOKEN_INTERIOR = config.openai.log_token
+    #PORADOCK_LOG_TOKEN_INTERIOR = config.app.log_token
     
     BASE_DIR = config.app.interior_dir
     INPUT_DIR = config.app.interior_dir / "input"

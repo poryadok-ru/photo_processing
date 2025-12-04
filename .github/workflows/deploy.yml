@@ -66,8 +66,7 @@ jobs:
             PIXIAN_API_USER=${{ secrets.PIXIAN_API_USER }}
             PIXIAN_API_KEY=${{ secrets.PIXIAN_API_KEY }}
             PIXIAN_TEST_MODE=${{ secrets.PIXIAN_TEST_MODE }}
-            PORADOCK_LOG_TOKEN_INTERIOR=${{ secrets.PORADOCK_LOG_TOKEN_INTERIOR }}
-            PORADOCK_LOG_TOKEN_WHITE=${{ secrets.PORADOCK_LOG_TOKEN_WHITE }}
+            PORADOCK_LOG_TOKEN=${{ secrets.PORADOCK_LOG_TOKEN }}
             SQL_DEBUG=${{ secrets.SQL_DEBUG }}
             EOF
             
