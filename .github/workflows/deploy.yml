@@ -79,7 +79,7 @@ jobs:
             docker rm photo_processing 2>/dev/null || true
             
             # Запускаем новый контейнер
-            docker run -d --name photo_processing --network host --env-file .env photo_processing:latest
+            docker run -d --name photo_processing --restart=always --network host --env-file .env photo_processing:latest
             
             # Ждем запуска контейнера
             sleep 5
