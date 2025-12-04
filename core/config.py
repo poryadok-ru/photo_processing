@@ -49,7 +49,7 @@ class OpenAIConfig:
     """Конфигурация OpenAI API"""
     api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
     model_name: str = field(default_factory=lambda: os.getenv("MODEL_NAME", "openai/gpt-4.1-mini"))
-    image_model: str = field(default_factory=lambda: os.getenv("IMAGE_MODEL", "openrouter-gemini-2.5-flash"))
+    image_model: str = field(default_factory=lambda: os.getenv("IMAGE_MODEL", "openrouter-gemini-2.5-flash-lite"))
     base_url: str = field(default_factory=lambda: os.getenv("BASE_URL", "https://litellm.poryadok.ru"))
     log_token: str = field(default_factory=lambda: os.getenv("PORADOCK_LOG_TOKEN_INTERIOR"))
 
