@@ -80,6 +80,9 @@ class AsyncAIClient:
             )
             
             msg = response.choices[0].message
+            print(f"API response message: {msg}")
+            print(f"Message type: {type(msg)}")
+            print(f"Message attributes: {dir(msg)}")
             
             # Пробуем извлечь изображение из разных возможных полей
             img_url = None
@@ -105,9 +108,12 @@ class AsyncAIClient:
             # Декодируем если нашли URL
             if img_url and "base64," in img_url:
                 base64_data = img_url.split("base64,")[1]
+                print(f"Found base64 image, length: {len(base64_data)}")
                 return base64.b64decode(base64_data)
             
-            print("В ответе не найдено изображение")
+            print(f"В ответе не найдено изображение. img_url: {img_url}")
+            print(f"msg.images: {getattr(msg, 'images', 'N/A')}")
+            print(f"msg.image: {getattr(msg, 'image', 'N/A')}")
             return None
             
         except Exception as e:
