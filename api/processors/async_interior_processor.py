@@ -5,7 +5,7 @@ import asyncio
 from PIL import Image
 
 from .async_base import AsyncBaseProcessor
-from interior.async_ai_client import AsyncAIClient
+from interior.async_ai_client import AsyncAIClient, get_product_from_sheet_by_code, extract_six_digit_code
 from interior.config import Config
 from ..logging import CustomLogger
 from interior.image_processor import ImageProcessor
@@ -55,6 +55,21 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
                 img_3_4_bytes = buf_3_4.getvalue()
 
             # 4. Анализируем категорию
+            product_name = None
+            segment = None
+            
+            code = extract_six_digit_code(filename = file.filename)
+            if code:
+                sheet_row = await get_product_from_sheet_by_code(code, logger)
+                if sheet_row:
+                    segment, product_name = sheet_row
+                    logger.info(f"Из Google Sheets: Сегмент={segment}, Номенклатура={product_name} для кода {code}")
+                else:
+                    logger.info(f"Код {code} не найден в Google Sheets.")
+            else:
+                logger.info(f"В имени файла не найден 6-значный код.")
+
+            # Категорию и подкатегорию по-прежнему определяет модель как раньше:
             async with self.semaphore:
                 main_category, subcategory = await self.ai_client.analyze_thematic_subcategory(
                     img_3_4_bytes, logger
@@ -62,7 +77,7 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             logger.info(f"Категория для {file.filename}: {main_category} - {subcategory}")
 
             # 5. Генерируем промпт
-            prompt = self._generate_context_prompt(main_category, subcategory)
+            prompt = self._generate_context_prompt(main_category, subcategory, product_name=product_name, segment=segment)
 
             # 6. Генерируем изображение
             async with self.semaphore:
@@ -98,45 +113,49 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             )
             raise
     
-    def _generate_context_prompt(self, main_category: str, subcategory: str) -> str:
-        """Генерирует промпт для обработки изображения"""
+    def _generate_context_prompt(self, main_category: str, subcategory: str, product_name: str | None = None, segment: str | None = None) -> str:
         categories = Config.get_thematic_categories()
         description = categories.get(main_category, {}).get(subcategory, "")
         context = Config.THEMATIC_SUBCATEGORIES.get(main_category, {}).get(subcategory, "neutral interior setting")
 
+        # Вставляем инфу о товаре, если она есть
+        extra_info = ""
+        if product_name or segment:
+            extra = []
+            if product_name:
+                extra.append(f"- Product name: {product_name}")
+            if segment:
+                extra.append(f"- Product segment: {segment}")
+            extra_info = "\nPRODUCT INFO FROM GOOGLE SHEETS:\n" + "\n".join(extra) + "\n"
+
         prompt = f"""
 CREATE NATURAL PRODUCT PHOTO IN CONTEXT:
-
 PRODUCT PRESERVATION:
 - Use the EXACT same product from the input image
 - Maintain the SAME angle, orientation, and position as in the original photo
 - Do NOT change the product's perspective or viewing angle
 - Preserve all product details, colors, textures exactly as shown
 - Keep all text, labels, logos completely unchanged
-
 CONTEXT AND SETTING:
 - Place the product in a {main_category.lower()} environment: {context}
 - The product should appear naturally placed in this setting
 - Maintain the same scale and proportions as in the original
-
 BACKGROUND AND COMPOSITION:
 - Create a soft, slightly blurred background that matches {main_category} aesthetic
 - Background should be authentic but not distracting from the product
 - Use natural lighting that complements the product's original appearance
 - Add subtle contextual elements that make sense for {subcategory.lower()}
-
 STYLING GUIDELINES:
 - The scene should look realistic and professionally styled
 - Product must remain the main focus of the image
 - Keep the composition clean and uncluttered
 - Lighting should highlight the product naturally
-
 TECHNICAL REQUIREMENTS:
 - High-quality professional photography
 - Product appearance must be identical to input (only environment changes)
 - Maintain original product angle and orientation
 - Soft background blur to keep focus on product
-
+{extra_info}
 FINAL OUTPUT: Natural product photo in appropriate {main_category} context, with identical product presentation.
 """
         return prompt

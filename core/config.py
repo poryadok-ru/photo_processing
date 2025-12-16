@@ -34,6 +34,9 @@ class AppConfig:
     
     task_cleanup_interval_hours: int = field(default_factory=lambda: int(os.getenv("TASK_CLEANUP_INTERVAL_HOURS", 1)))
     task_max_age_hours: int = field(default_factory=lambda: int(os.getenv("TASK_MAX_AGE_HOURS", 24)))
+
+    sheet_id: str = field(default_factory=lambda: os.getenv("SHEET_ID", ""))
+    gid: str = field(default_factory=lambda: os.getenv("GID", "1629402805"))
     
     def __post_init__(self):
         self.white_dir = self.base_dir / "white"
