@@ -142,9 +142,10 @@ async def get_product_from_sheet_by_code(code: str, logger) -> Optional[Tuple[st
         url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
         try:
             async with httpx.AsyncClient(timeout=15) as client:
-                r = await client.get(url)
+                r = await client.get(url, follow_redirects=True)
                 r.raise_for_status()
-                text = r.text
+                # ЯВНО ДЕКОДИРУЕМ csv как UTF-8
+                text = r.content.decode("utf-8")
             reader = csv.DictReader(StringIO(text))
             # Колонки: "Сегмент", "Код", "Номенклатура"
             _SHEET_CACHE = {}

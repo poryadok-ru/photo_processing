@@ -56,28 +56,45 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
 
             # 4. Анализируем категорию
             product_name = None
-            segment = None
-            
-            code = extract_six_digit_code(filename = file.filename)
+            subcategory = None
+            main_category = None  # не будет использоваться при кастомном prompt
+            use_custom_prompt = False
+
+            code = extract_six_digit_code(filename=file.filename)
             if code:
                 sheet_row = await get_product_from_sheet_by_code(code, logger)
+                
                 if sheet_row:
-                    segment, product_name = sheet_row
-                    logger.info(f"Из Google Sheets: Сегмент={segment}, Номенклатура={product_name} для кода {code}")
+                    subcategory, product_name = sheet_row  # subcategory=segment, product_name=номенклатура
+                    use_custom_prompt = True
+                    logger.info(f"Из Google Sheets: Категория={subcategory}, Номенклатура={product_name} для кода {code}")
                 else:
-                    logger.info(f"Код {code} не найден в Google Sheets.")
+                    logger.info(f"Код {code} не найден в Google Sheets. Используется определение через AI.")
+                    # Анализируем через нейросеть
+                    async with self.semaphore:
+                        main_category, subcategory = await self.ai_client.analyze_thematic_subcategory(
+                            img_3_4_bytes, logger
+                        )
             else:
-                logger.info(f"В имени файла не найден 6-значный код.")
+                logger.info(f"В имени файла не найден 6-значный код. Используется определение через AI.")
+                async with self.semaphore:
+                    main_category, subcategory = await self.ai_client.analyze_thematic_subcategory(
+                        img_3_4_bytes, logger
+                    )
 
-            # Категорию и подкатегорию по-прежнему определяет модель как раньше:
-            async with self.semaphore:
-                main_category, subcategory = await self.ai_client.analyze_thematic_subcategory(
-                    img_3_4_bytes, logger
+            if use_custom_prompt:
+                prompt = self._generate_context_prompt(
+                    main_category=None,
+                    subcategory=subcategory,
+                    product_name=product_name,
+                    use_custom=True
                 )
-            logger.info(f"Категория для {file.filename}: {main_category} - {subcategory}")
+            else:
+                logger.info(f"Категория для {file.filename}: {main_category} - {subcategory}")
+                prompt = self._generate_context_prompt(main_category, subcategory)
 
             # 5. Генерируем промпт
-            prompt = self._generate_context_prompt(main_category, subcategory, product_name=product_name, segment=segment)
+            #prompt = self._generate_context_prompt(main_category, subcategory, product_name=product_name, segment=segment)
 
             # 6. Генерируем изображение
             async with self.semaphore:
@@ -95,7 +112,10 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             cropped_image.save(output_buffer, format="JPEG", quality=95)
             processed_data = output_buffer.getvalue()
 
-            output_filename = f"{file.filename.split('.')[0]}_in_{main_category.lower()}.jpg"
+            if use_custom_prompt:
+                output_filename = f"{file.filename.rsplit('.', 1)[0]}_processed.jpg"
+            else:
+                output_filename = f"{file.filename.rsplit('.', 1)[0]}_in_{main_category.lower()}.jpg"
             logger.info(f"{processing_type_name} | Успешно обработан: {file.filename}")
             logger.finish_success(
                 filename=file.filename,
@@ -113,22 +133,58 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             )
             raise
     
-    def _generate_context_prompt(self, main_category: str, subcategory: str, product_name: str | None = None, segment: str | None = None) -> str:
-        categories = Config.get_thematic_categories()
-        description = categories.get(main_category, {}).get(subcategory, "")
-        context = Config.THEMATIC_SUBCATEGORIES.get(main_category, {}).get(subcategory, "neutral interior setting")
-
-        # Вставляем инфу о товаре, если она есть
-        extra_info = ""
-        if product_name or segment:
-            extra = []
+    def _generate_context_prompt(
+        self,
+        main_category: str | None = None,
+        subcategory: str | None = None,
+        product_name: str | None = None,
+        use_custom: bool = False
+    ) -> str:
+        """
+        Генерирует промпт для обработки изображения.
+        Если use_custom=True, генерирует промпт только по данным из таблицы (subcategory и product_name),
+        иначе — со старой логикой.
+        """
+        if use_custom:
+            # Промпт для случая "только subcategory (segment) и product_name"
+            extra_info = []
             if product_name:
-                extra.append(f"- Product name: {product_name}")
-            if segment:
-                extra.append(f"- Product segment: {segment}")
-            extra_info = "\nPRODUCT INFO FROM GOOGLE SHEETS:\n" + "\n".join(extra) + "\n"
+                extra_info.append(f"- Product name: {product_name}")
+            if subcategory:
+                extra_info.append(f"- Product category: {subcategory}")
+            extra = "\n".join(extra_info)
+            prompt = f"""
+CREATE NATURAL PRODUCT PHOTO IN CONTEXT, using the following product information:
+{extra}
 
-        prompt = f"""
+LOCATION:
+- Create a NEUTRAL environment or setting that is best suited for a product with this name and category.
+- The background and context should NOT belong to any specific place (like kitchen, bathroom, garden, etc.), 
+but should fit naturally for this type of product and category.
+- Ensure the setting highlights the product appropriately, playing up its intended use, but without strong associations to a specific room.
+
+PRODUCT PRESERVATION:
+- Use the EXACT same product from the input image (same angle, orientation, and position)
+- Do NOT change the product's perspective or viewing angle
+- Preserve all product details, colors, and textures
+- Keep all text, labels, and logos unchanged
+
+COMPOSITION & STYLING:
+- Product must remain the main focus of the image
+- Maintain scale and proportions
+- The background should be soft and slightly blurred
+- Add subtle, non-distracting contextual details relevant to the product and category
+
+FINAL OUTPUT:
+- High-quality professional photography of the product
+- A neutral but contextually appropriate scene for this type of product
+"""
+            return prompt
+        else:
+            # СТАРЫЙ ПРОМПТ
+            categories = Config.get_thematic_categories()
+            context = Config.THEMATIC_SUBCATEGORIES.get(main_category, {}).get(subcategory, "neutral interior setting")
+            prompt = f"""
 CREATE NATURAL PRODUCT PHOTO IN CONTEXT:
 PRODUCT PRESERVATION:
 - Use the EXACT same product from the input image
@@ -155,10 +211,10 @@ TECHNICAL REQUIREMENTS:
 - Product appearance must be identical to input (only environment changes)
 - Maintain original product angle and orientation
 - Soft background blur to keep focus on product
-{extra_info}
+
 FINAL OUTPUT: Natural product photo in appropriate {main_category} context, with identical product presentation.
 """
-        return prompt
+            return prompt
     
     def _crop_to_3_4(self, image: Image.Image) -> Image.Image:
         """Обрезает изображение до 3:4 (синхронно)"""
