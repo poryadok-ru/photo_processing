@@ -36,7 +36,7 @@ class AppConfig:
     task_max_age_hours: int = field(default_factory=lambda: int(os.getenv("TASK_MAX_AGE_HOURS", 24)))
 
     sheet_id: str = field(default_factory=lambda: os.getenv("SHEET_ID", ""))
-    gid: str = field(default_factory=lambda: os.getenv("GID", "1629402805"))
+    gid: str = field(default_factory=lambda: os.getenv("GID", "1195334868"))
     
     def __post_init__(self):
         self.white_dir = self.base_dir / "white"
