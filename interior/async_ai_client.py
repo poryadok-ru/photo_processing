@@ -37,13 +37,111 @@ class AsyncAIClient:
           CHRISTMAS, EASTER, HALLOWEEN, NEW_YEAR, VALENTINE или GENERAL.
         
         Остальные доступные категории и подкатегории:
-        KITCHEN - COOKWARE, UTENSILS, APPLIANCES, STORAGE, DINNERWARE, DECOR
-        BATHROOM - TOWELS, HYGIENE, FURNITURE, STORAGE, ACCESSORIES, CLEANING  
-        LIVING_ROOM - FURNITURE, LIGHTING, DECOR, TEXTILES, STORAGE, ELECTRONICS
-        BEDROOM - BEDDING, FURNITURE, LIGHTING, DECOR, STORAGE, TEXTILES
-        GARDEN - FURNITURE, TOOLS, DECOR, PLANTS, LIGHTING, STORAGE
-        OFFICE - FURNITURE, ORGANIZATION, STATIONERY, TECH, DECOR
-        HOLIDAY - CHRISTMAS, EASTER, HALLOWEEN, NEW_YEAR, VALENTINE, GENERAL"""
+        KITCHEN - 
+            COOKWARE, 
+            UTENSILS, 
+            APPLIANCES, 
+            STORAGE, 
+            DINNERWARE, 
+            DECOR
+            
+        BATHROOM - 
+            TOWELS, 
+            HYGIENE, 
+            FURNITURE, 
+            STORAGE, 
+            ACCESSORIES, 
+            CLEANING
+
+        LIVING_ROOM - 
+            FURNITURE, 
+            LIGHTING, 
+            DECOR, 
+            TEXTILES, 
+            STORAGE, 
+            ELECTRONICS
+
+        BEDROOM - 
+            BEDDING, 
+            FURNITURE, 
+            LIGHTING, 
+            DECOR, 
+            STORAGE, 
+            TEXTILES
+
+        GARDEN - 
+            FURNITURE, 
+            TOOLS, 
+            DECOR, 
+            PLANTS, 
+            LIGHTING, 
+            STORAGE
+
+        OFFICE - 
+            FURNITURE, 
+            ORGANIZATION, 
+            STATIONERY, 
+            TECH, 
+            DECOR
+
+        HOLIDAY - 
+            CHRISTMAS, 
+            EASTER, 
+            HALLOWEEN, 
+            NEW_YEAR, 
+            VALENTINE, 
+            GENERAL      
+
+        CONSTRUCTION_REPAIR - 
+            TOOLS, 
+            CONSTRUCTION_CHEMICALS, 
+            LADDERS, 
+            HANDLES_LOCKS_FITTINGS, 
+            TOOL_CONSUMABLES, 
+            RADIATORS_CONVECTOR, 
+            BUILDING_MIXTURES, 
+            GLUE, 
+            VENTILATION, 
+            WORKPLACE_ORGANIZATION, 
+            SANITARY_ENGINEERING, 
+            SANITARY_HARDWARE_ACCESSORIES, 
+            HOUSEHOLD_LIGHTING, 
+            WATER_SUPPLY_ENGINEERING_PLUMBING, 
+            CERAMICWARE_BATHS, 
+            ACCESS_HATCH, 
+            BULB, 
+            WELDING_EQUIPMENT, 
+            DRAINAGE_SYSTEMS, 
+            MEASURING_TOOLS, 
+            ELECTRICAL_INSTALLATION, 
+            FASTENERS_FITTINGS, 
+            INSTRUMENT_EQUIPMENT, 
+            ADHESIVE_TAPES, 
+            ELECTRICS, 
+            PNEUMOTOOL_EQUIPMENT, 
+            WALLPAPERS_COVERINGS, 
+            SAFETY_FIRE_PROTECTION, 
+            MIXERS_SHOWER_SYSTEMS, 
+            INSULATION_MATERIALS
+
+        SPORT_OUTDOOR -
+            POOL, 
+            INFLATABLE_FURNITURE, 
+            CAMP_FURNITURE, 
+            TENTS_CANOPIES_SLEEPING_BAGS, 
+            TOURIST_DISHWARE
+
+        BEAUTY_HYGIENE -
+            BODY_FACE_HAIR_CARE, 
+            COSMETICS, 
+            MAKEUP_TOOLS, 
+            COSMETICS_ACCESSORIES, 
+            HAIR_ACCESSORIES
+
+        AUTO -
+            CAR_CLEANING_PRODUCTS, 
+            CAR_ACCESSORIES
+        """
         
         try:
             response = await self.client.chat.completions.create(

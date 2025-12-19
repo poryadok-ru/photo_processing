@@ -152,7 +152,7 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
                 extra_info.append(f"- Product category: {subcategory}")
             extra = "\n".join(extra_info)
             prompt = f"""
-CREATE NATURAL PRODUCT PHOTO IN CONTEXT, using the following product information:
+CREATE NATURAL PRODUCT PHOTO IN CONTEXT, using the following product information (Don not add this information to the photo, just use it for context):
 {extra}
 LOCATION:
 - Create a NEUTRAL environment or setting that is best suited for a product with this name and category.
