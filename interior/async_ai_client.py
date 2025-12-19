@@ -11,6 +11,7 @@ import csv
 import httpx
 from io import StringIO
 from typing import Optional, Tuple, Dict
+import time
 
 
 class AsyncAIClient:
@@ -130,34 +131,95 @@ class AsyncAIClient:
 
 SHEET_ID = config.app.sheet_id
 GID = config.app.gid
-_SHEET_CACHE = None
 
 def extract_six_digit_code(filename: str) -> Optional[str]:
     m = re.search(r'(?<!\d)(\d{6})(?!\d)', filename)
     return m.group(1) if m else None
 
 async def get_product_from_sheet_by_code(code: str, logger) -> Optional[Tuple[str, str]]:
-    global _SHEET_CACHE
-    if _SHEET_CACHE is None:
-        url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
-        try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                r = await client.get(url, follow_redirects=True)
-                r.raise_for_status()
-                # ЯВНО ДЕКОДИРУЕМ csv как UTF-8
-                text = r.content.decode("utf-8")
-            reader = csv.DictReader(StringIO(text))
-            # Колонки: "Сегмент", "Код", "Номенклатура"
-            _SHEET_CACHE = {}
-            for row in reader:
-                kod = row.get("Код", "").strip()
-                m = re.search(r'(?<!\d)(\d{6})(?!\d)', kod)
-                if m:
-                    _SHEET_CACHE[m.group(1)] = (
-                        row.get("Сегмент", "").strip(),
-                        row.get("Номенклатура", "").strip()
-                    )
-        except Exception as e:
-            logger.error(f"Не удалось загрузить Google Sheet: {e}")
-            _SHEET_CACHE = {}
-    return _SHEET_CACHE.get(code)
+    url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}&_cb={int(time.time())}"
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "User-Agent": "httpx/SheetsFetcher",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0), follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+            try:
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                body_sample = resp.text[:800] if resp.text else ""
+                logger.error(
+                    "Не удалось загрузить Google Sheet: HTTPStatusError | "
+                    f"status={resp.status_code} url={resp.request.url} "
+                    f"headers={dict(resp.headers)} "
+                    f"body_sample={body_sample!r} exc={e!r}"
+                )
+                return None
+    except httpx.TimeoutException as e:
+        logger.error(
+            "Не удалось загрузить Google Sheet: Timeout | "
+            f"url={url} exc={e!r}\n{traceback.format_exc()}"
+        )
+        return None
+    except httpx.RequestError as e:
+        # ConnectError, NetworkError и пр. наследуются от RequestError
+        req_url = getattr(e.request, "url", url)
+        logger.error(
+            "Не удалось загрузить Google Sheet: RequestError | "
+            f"url={req_url} exc={e!r}\n{traceback.format_exc()}"
+        )
+        return None
+    except Exception as e:
+        logger.error(
+            "Не удалось загрузить Google Sheet: Unexpected error | "
+            f"url={url} exc={e!r}\n{traceback.format_exc()}"
+        )
+        return None
+
+    # Если сюда дошли — статус 200
+    try:
+        text = resp.content.decode("utf-8-sig", errors="replace")
+    except Exception as e:
+        logger.error(
+            f"Ошибка декодирования CSV: exc={e!r} "
+            f"raw_sample={resp.content[:200]!r}\n{traceback.format_exc()}"
+        )
+        return None
+
+    try:
+        reader = csv.DictReader(StringIO(text))
+        for row in reader:
+            kod = (row.get("Код") or "").strip()
+            m = re.search(r'(?<!\d)(\d{6})(?!\d)', kod)
+            if not m:
+                continue
+            if m.group(1) == code:
+                segment = (row.get("Сегмент") or "").strip()
+                product_name = (row.get("Номенклатура") or "").strip()
+                return segment, product_name
+
+        # Код не найден — логируем список всех кодов для диагностики
+        # Соберём первые N кодов, чтобы не захламлять логи
+        reader = csv.DictReader(StringIO(text))  # перечитываем
+        all_codes = []
+        for row in reader:
+            kod = (row.get("Код") or "").strip()
+            m = re.search(r'(?<!\d)(\d{6})(?!\d)', kod)
+            if m:
+                all_codes.append(m.group(1))
+        sample_codes = ", ".join(all_codes[:100])
+        logger.error(
+            f"Код {code} не найден в Google Sheets. Всего кодов: {len(all_codes)}. "
+            f"Первые коды: {sample_codes}"
+        )
+        return None
+
+    except Exception as e:
+        logger.error(
+            f"Ошибка разбора CSV: exc={e!r}\n{traceback.format_exc()}"
+        )
+        return None

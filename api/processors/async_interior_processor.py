@@ -75,6 +75,7 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
                         main_category, subcategory = await self.ai_client.analyze_thematic_subcategory(
                             img_3_4_bytes, logger
                         )
+            # 5. Генерируем промпт
             else:
                 logger.info(f"В имени файла не найден 6-значный код. Используется определение через AI.")
                 async with self.semaphore:
@@ -92,9 +93,6 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             else:
                 logger.info(f"Категория для {file.filename}: {main_category} - {subcategory}")
                 prompt = self._generate_context_prompt(main_category, subcategory)
-
-            # 5. Генерируем промпт
-            #prompt = self._generate_context_prompt(main_category, subcategory, product_name=product_name, segment=segment)
 
             # 6. Генерируем изображение
             async with self.semaphore:
@@ -156,25 +154,23 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             prompt = f"""
 CREATE NATURAL PRODUCT PHOTO IN CONTEXT, using the following product information:
 {extra}
-
 LOCATION:
 - Create a NEUTRAL environment or setting that is best suited for a product with this name and category.
 - The background and context should NOT belong to any specific place (like kitchen, bathroom, garden, etc.), 
-but should fit naturally for this type of product and category.
+  but should fit naturally for this type of product and category.
 - Ensure the setting highlights the product appropriately, playing up its intended use, but without strong associations to a specific room.
-
 PRODUCT PRESERVATION:
 - Use the EXACT same product from the input image (same angle, orientation, and position)
 - Do NOT change the product's perspective or viewing angle
 - Preserve all product details, colors, and textures
 - Keep all text, labels, and logos unchanged
-
 COMPOSITION & STYLING:
 - Product must remain the main focus of the image
+- The product should occupy most of the frame and be shown close up (50+% of all frame)
+- Make sure the product appears large and clearly visible, filling a significant part of the picture
 - Maintain scale and proportions
 - The background should be soft and slightly blurred
 - Add subtle, non-distracting contextual details relevant to the product and category
-
 FINAL OUTPUT:
 - High-quality professional photography of the product
 - A neutral but contextually appropriate scene for this type of product
@@ -204,6 +200,8 @@ BACKGROUND AND COMPOSITION:
 STYLING GUIDELINES:
 - The scene should look realistic and professionally styled
 - Product must remain the main focus of the image
+- The product should occupy most of the frame and be shown large (close up)
+- Make sure the product appears large and clearly visible, filling a significant part of the picture
 - Keep the composition clean and uncluttered
 - Lighting should highlight the product naturally
 TECHNICAL REQUIREMENTS:
@@ -211,11 +209,10 @@ TECHNICAL REQUIREMENTS:
 - Product appearance must be identical to input (only environment changes)
 - Maintain original product angle and orientation
 - Soft background blur to keep focus on product
-
 FINAL OUTPUT: Natural product photo in appropriate {main_category} context, with identical product presentation.
 """
-            return prompt
-    
+        return prompt 
+
     def _crop_to_3_4(self, image: Image.Image) -> Image.Image:
         """Обрезает изображение до 3:4 (синхронно)"""
         width, height = image.size
