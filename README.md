@@ -1,4 +1,4 @@
-# Photo Processing API
+# Photo Processing
 
 API для обработки изображений с поддержкой двух типов обработки:
 - **White Background** - удаление фона и замена на белый
