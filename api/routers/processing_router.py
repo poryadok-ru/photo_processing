@@ -4,11 +4,26 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, UploadFile, File
 from fastapi.responses import Response
 from typing import List
+import threading
 from api.services.task_service import TaskService
 from api.dependencies import verify_user, get_task_service
 from api.models.schemas import ProcessingResponse, TaskStatusResponse
 
 router = APIRouter(prefix="/api/v1", tags=["processing"])
+
+# ── Счётчик вариантов для generate_image ──────────────────────────────────
+# Потокобезопасный: каждый запрос получает следующий вариант по кругу (1 → 2 → 1 → 2 …)
+_variant_lock = threading.Lock()
+_variant_counter = 0  # глобальный счётчик вызовов
+
+
+def _next_variant() -> int:
+    """Возвращает 1 или 2, чередуя при каждом вызове."""
+    global _variant_counter
+    with _variant_lock:
+        _variant_counter += 1
+        return 1 if _variant_counter % 2 == 1 else 2
+# ─────────────────────────────────────────────────────────────────────────
 
 
 @router.post("/processing/parallel", response_model=ProcessingResponse)
@@ -91,16 +106,25 @@ async def generate_image(
     file: UploadFile = File(...),
     user: dict = Depends(verify_user)
 ):
-    """Генерирует изображение из одного файла"""
+    """
+    Генерирует интерьерное фото товара.
+    При каждом обращении чередует стиль интерьера:
+      нечётный вызов  → variant 1 (светлый, скандинавский)
+      чётный вызов    → variant 2 (тёмный, насыщенный)
+    Возвращает одно изображение (image/jpeg).
+    """
     from api.processors.async_interior_processor import AsyncInteriorProcessor
-    
+
+    variant = _next_variant()
+
     processor = AsyncInteriorProcessor()
-    processed_data, output_filename = await processor.process_single(file)
-    
+    processed_data, output_filename = await processor.process_single(file, variant=variant)
+
     return Response(
         content=processed_data,
         media_type="image/jpeg",
         headers={
             "Content-Disposition": f"attachment; filename={output_filename}",
+            "X-Variant": str(variant),  # удобно для отладки
         }
     )

@@ -61,7 +61,7 @@ DATABASE_URL=postgresql://user:password@host:5432/database_name
 # OpenAI API (для обработки интерьеров)
 # ============================================
 OPENAI_API_KEY=sk-your-openai-api-key-here
-MODEL_NAME=openai/gpt-4.1-mini
+MODEL_NAME=openai-gpt-4.1-mini
 IMAGE_MODEL=gemini-2.5-flash-image
 
 # ============================================

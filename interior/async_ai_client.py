@@ -167,7 +167,7 @@ class AsyncAIClient:
             logger.error(f"Ошибка анализа категории: {e}")
             return "LIVING_ROOM", "DECOR"
     
-    async def edit_image_with_gemini(self, image_data: bytes, prompt: str, logger: CustomLogger) -> Optional[bytes]:
+    async def edit_image_with_gemini(self, image_data: bytes, prompt: str, logger: CustomLogger, variant: int = 1) -> Optional[bytes]:
         """Асинхронно генерирует изображение (совместимость с Gemini 2.5)"""
         base64_image = base64.b64encode(image_data).decode('utf-8')
         

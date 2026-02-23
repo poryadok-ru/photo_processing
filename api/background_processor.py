@@ -78,7 +78,10 @@ class BackgroundProcessor:
                 
                 logger.info(f"Обработка файла {i+1}/{total_files}: {file.filename}")
                 
-                processed_data, filename = await processor.process_single(file)
+                result = await processor.process_single(file)
+
+                # process_single всегда возвращает (bytes, filename)
+                processed_data, filename = result
                 processed_files.append((filename, processed_data))
                 
                 logger.debug(f"Успешно обработан: {file.filename}")

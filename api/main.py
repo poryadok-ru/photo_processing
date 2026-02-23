@@ -23,7 +23,8 @@ app = FastAPI(
     openapi_url="/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
-    root_path="/photo_processing"
+    root_path="/photo_processing",
+    servers=[{"url": "/photo_processing"}]
 )
 
 app.add_middleware(
