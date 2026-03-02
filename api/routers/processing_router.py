@@ -11,18 +11,25 @@ from api.models.schemas import ProcessingResponse, TaskStatusResponse
 
 router = APIRouter(prefix="/api/v1", tags=["processing"])
 
-# ── Счётчик вариантов для generate_image ──────────────────────────────────
-# Потокобезопасный: каждый запрос получает следующий вариант по кругу (1 → 2 → 1 → 2 …)
-_variant_lock = threading.Lock()
-_variant_counter = 0  # глобальный счётчик вызовов
+# ── Случайный выбор акцента сцены для generate_image ─────────────────────
+# Количество сцен берём из процессора, чтобы не дублировать константу.
+# _last_scene хранит предыдущий индекс — гарантируем, что два подряд запроса
+# никогда не получат одинаковую сцену.
+import random as _random
+_scene_lock = threading.Lock()
+_last_scene: int = -1
 
 
-def _next_variant() -> int:
-    """Возвращает 1 или 2, чередуя при каждом вызове."""
-    global _variant_counter
-    with _variant_lock:
-        _variant_counter += 1
-        return 1 if _variant_counter % 2 == 1 else 2
+def _next_scene_index(total_scenes: int) -> int:
+    """Возвращает случайный индекс сцены, отличный от предыдущего."""
+    global _last_scene
+    with _scene_lock:
+        if total_scenes <= 1:
+            return 0
+        candidates = [i for i in range(total_scenes) if i != _last_scene]
+        idx = _random.choice(candidates)
+        _last_scene = idx
+        return idx
 # ─────────────────────────────────────────────────────────────────────────
 
 
@@ -108,23 +115,24 @@ async def generate_image(
 ):
     """
     Генерирует интерьерное фото товара.
-    При каждом обращении чередует стиль интерьера:
-      нечётный вызов  → variant 1 (светлый, скандинавский)
-      чётный вызов    → variant 2 (тёмный, насыщенный)
+    При каждом обращении случайно выбирает сцену из пула светлых композиций —
+    гарантированно отличную от предыдущей.
     Возвращает одно изображение (image/jpeg).
     """
     from api.processors.async_interior_processor import AsyncInteriorProcessor
 
-    variant = _next_variant()
-
     processor = AsyncInteriorProcessor()
-    processed_data, output_filename = await processor.process_single(file, variant=variant)
+    total = len(processor._COLOR_ACCENTS)
+    scene_index = _next_scene_index(total)
+
+    processed_data, output_filename = await processor.process_single(file, scene_index=scene_index)
 
     return Response(
         content=processed_data,
         media_type="image/jpeg",
         headers={
             "Content-Disposition": f"attachment; filename={output_filename}",
-            "X-Variant": str(variant),  # удобно для отладки
+            "X-Scene-Index": str(scene_index),
+            "X-Scene-Label": processor._COLOR_ACCENTS[scene_index]["label"],
         }
     )

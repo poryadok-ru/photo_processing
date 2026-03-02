@@ -17,7 +17,7 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
         super().__init__("interior")
         self.ai_client = AsyncAIClient()
 
-    async def process_single(self, file: UploadFile, variant: int = 1) -> Tuple[bytes, str]:
+    async def process_single(self, file: UploadFile, scene_index: int = 0) -> Tuple[bytes, str]:
         """
         Обрабатывает одно изображение.
         variant=1 — светлый скандинавский стиль,
@@ -28,7 +28,7 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
         img_proc = ImageProcessor()
         processing_type_name = "interior"
         try:
-            logger.info(f"Начало обработки интерьера: {file.filename} (variant={variant})")
+            logger.info(f"Начало обработки интерьера: {file.filename} (scene_index={scene_index})")
 
             # 1. Читаем файл
             image_data = await self.save_uploaded_file(file)
@@ -88,18 +88,18 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
                 subcategory=subcategory,
                 product_name=product_name,
                 use_custom=use_custom_prompt,
-                variant=variant,
+                scene_index=scene_index,
             )
-            logger.info(f"Категория для {file.filename}: {main_category} - {subcategory}, variant={variant}")
+            logger.info(f"Категория для {file.filename}: {main_category} - {subcategory}, scene_index={scene_index}")
 
             # 6. Генерируем одно изображение
             async with self.semaphore:
                 raw_data = await self.ai_client.edit_image_with_gemini(
-                    img_3_4_bytes, prompt, logger, variant=variant
+                    img_3_4_bytes, prompt, logger
                 )
 
             if not raw_data:
-                raise Exception(f"Image generation failed for variant={variant}")
+                raise Exception(f"Image generation failed for scene_index={scene_index}")
 
             # 7. Кроп до 3:4 и сохранение
             processed_image = Image.open(io.BytesIO(raw_data))
@@ -110,9 +110,9 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
 
             name_base = file.filename.rsplit('.', 1)[0]
             suffix = "processed" if use_custom_prompt else f"in_{main_category.lower()}"
-            output_filename = f"{name_base}_{suffix}_v{variant}.jpg"
+            output_filename = f"{name_base}_{suffix}.jpg"
 
-            logger.info(f"{processing_type_name} | Успешно обработан: {file.filename} variant={variant}")
+            logger.info(f"{processing_type_name} | Успешно обработан: {file.filename} scene_index={scene_index}")
             logger.finish_success(
                 filename=file.filename,
                 processing_type=processing_type_name,
@@ -126,28 +126,52 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             logger.finish_error(processing_type=processing_type_name, error=str(e))
             raise
 
-    # ── Стили интерьера ────────────────────────────────────────────────────────
-    _VARIANT_STYLES = {
-        1: {
-            "label": "light & natural",
-            "description": (
-                "Light, airy Scandinavian-inspired setting. "
-                "Soft natural daylight from a window, neutral white or warm beige tones, "
-                "clean minimal surfaces, light wood textures, subtle plant or linen accents. "
-                "Bright and fresh atmosphere."
+    # ── Пул цветовых акцентов — влияют только на палитру, не диктуют композицию ─
+    # Роутер случайно выбирает индекс. Сцену модель подбирает сама по категории.
+    _COLOR_ACCENTS = [
+        {
+            "label": "pure white & light",
+            "palette": (
+                "Background palette: pure white and very light grey tones. "
+                "Crisp, clean, bright. Minimal color — let the product stand out."
             ),
         },
-        2: {
-            "label": "rich & moody",
-            "description": (
-                "Rich, warm and cozy atmosphere. "
-                "Warm artificial light (soft lamps or candles), deep earthy or dark tones — "
-                "terracotta, charcoal, navy or forest green, "
-                "textured surfaces such as stone, dark wood or velvet. "
-                "Intimate and premium feel."
+        {
+            "label": "warm sand & linen",
+            "palette": (
+                "Background palette: warm sandy beige, cream, and soft linen tones. "
+                "Warm natural light. Cozy and inviting without being heavy."
             ),
         },
-    }
+        {
+            "label": "soft sage & muted green",
+            "palette": (
+                "Background palette: muted sage green, dusty eucalyptus, and off-white. "
+                "Fresh and natural feel. Light and airy, not saturated."
+            ),
+        },
+        {
+            "label": "blush & warm rose",
+            "palette": (
+                "Background palette: very soft blush pink, warm rose-white, and light peach tones. "
+                "Delicate and elegant. Light-toned, never dark."
+            ),
+        },
+        {
+            "label": "pale blue & cool grey",
+            "palette": (
+                "Background palette: pale sky blue, cool light grey, and white. "
+                "Fresh and airy. Clean and modern without being cold."
+            ),
+        },
+        {
+            "label": "warm terracotta & oat",
+            "palette": (
+                "Background palette: very light terracotta, warm oat, and natural clay tones. "
+                "Earthy but bright. Sun-warmed feel, always light-toned."
+            ),
+        },
+    ]
 
     # Общий блок про линейку — одинаковый для обоих промптов
     _RULER_BLOCK = (
@@ -178,18 +202,17 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
         subcategory: str | None = None,
         product_name: str | None = None,
         use_custom: bool = False,
-        variant: int = 1,
+        scene_index: int = 0,
     ) -> str:
         """
-        Строит промпт для нужного варианта стиля.
-        Блок про линейку присутствует в обоих вариантах.
-        Категорийная логика (use_custom / main_category / subcategory) не затрагивается.
+        Строит промпт. Сцену модель выбирает сама по категории/названию товара.
+        Варьируется только цветовой акцент фона (scene_index → _COLOR_ACCENTS).
         """
-        style = self._VARIANT_STYLES.get(variant, self._VARIANT_STYLES[1])
-        style_block = (
-            f"INTERIOR STYLE (variant {variant} — {style['label']}):\n"
-            f"- {style['description']}\n"
-            f"- This style must define the background mood, lighting and color palette.\n"
+        accent = self._COLOR_ACCENTS[scene_index % len(self._COLOR_ACCENTS)]
+        color_block = (
+            f"BACKGROUND COLOR PALETTE ({accent['label']}):\n"
+            f"- {accent['palette']}\n"
+            f"- Always light-toned: background must NEVER be dark or heavily saturated.\n"
             f"- The product itself must remain UNCHANGED — only the environment changes."
         )
 
@@ -201,72 +224,73 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
                 extra_info.append(f"- Product category: {subcategory}")
             extra = "\n".join(extra_info)
             prompt = f"""
-CREATE NATURAL PRODUCT PHOTO IN CONTEXT, using the following product information (do not add this information to the photo, just use it for context):
+TASK: Add a natural, contextually appropriate background to this product photo. The product must remain 100% unchanged.
+
+PRODUCT INFORMATION (context only — do not display in the image):
 {extra}
 
-{style_block}
+PRODUCT PRESERVATION — HIGHEST PRIORITY:
+- Copy the product from the input image EXACTLY as-is: same shape, same colors, same quantity of items, same angle, same orientation.
+- DO NOT add, remove, or change any part of the product itself.
+- DO NOT change the number of items (if there are 3 bottles, keep exactly 3 bottles).
+- Preserve every detail: colors, textures, labels, logos, text, packaging.
+- The product in the output must be INDISTINGUISHABLE from the product in the input.
+
+BACKGROUND SCENE — choose freely based on the product:
+- Pick the most natural, logical real-world setting for this specific product.
+- Let the product category and name guide your choice: cleaning products → bathroom or kitchen; garden supplies → outdoors or balcony; cookware → kitchen; textiles → bedroom or living room; etc.
+- The scene should feel genuinely appropriate — like a real lifestyle photo for this product.
+- Be creative with the composition, props, and setting — make it feel alive, not generic.
+
+{color_block}
 
 {self._RULER_BLOCK}
 
-LOCATION:
-- Create a NEUTRAL environment or setting that is best suited for a product with this name and category.
-- The background and context should NOT belong to any specific place (like kitchen, bathroom, garden, etc.),
-  but should fit naturally for this type of product and category.
-- Ensure the setting highlights the product appropriately, playing up its intended use, but without strong associations to a specific room.
-PRODUCT PRESERVATION:
-- Use the EXACT same product from the input image (same angle, orientation, and position).
-- Do NOT change the product's perspective or viewing angle.
-- Preserve all product details, colors, and textures exactly as shown.
-- Keep all text, labels, and logos unchanged.
 {self._FRAMING_BLOCK}
 
-COMPOSITION & STYLING:
-- Product must remain the main focus of the image.
-- The background should be soft and strongly blurred — background details should not be clearly legible.
-- Add minimal, non-distracting contextual props relevant to the product type.
+COMPOSITION:
+- Product is the clear hero: large, sharp, front and center.
+- Background is soft, blurred, and subordinate to the product.
+- Add 1-2 contextually fitting props at most — keep it natural, not cluttered.
 FINAL OUTPUT:
-- High-quality professional close-up photography of the product.
-- The product is large, sharp, and dominant — the interior is atmosphere, not subject.
-- Realistic scale consistent with the interior environment.
-- No ruler or measurement markings in the output.
+- Professional close-up product photo with a natural, product-appropriate background.
+- Product: identical to input. Color palette: {accent["label"]}.
+- No ruler or measurement markings.
 """
         else:
             context = Config.THEMATIC_SUBCATEGORIES.get(main_category, {}).get(
                 subcategory, "neutral interior setting"
             )
             prompt = f"""
-CREATE NATURAL PRODUCT PHOTO IN CONTEXT:
+TASK: Add a natural, contextually appropriate background to this product photo. The product must remain 100% unchanged.
 
-{style_block}
+PRODUCT PRESERVATION — HIGHEST PRIORITY:
+- Copy the product from the input image EXACTLY as-is: same shape, same colors, same quantity of items, same angle, same orientation.
+- DO NOT add, remove, or change any part of the product itself.
+- DO NOT change the number of items (if there are 3 bottles, keep exactly 3 bottles).
+- Preserve every detail: colors, textures, labels, logos, text, packaging.
+- The product in the output must be INDISTINGUISHABLE from the product in the input.
+
+BACKGROUND SCENE:
+- Place the product in a {main_category.lower()} setting: {context}
+- Make the scene feel alive and authentic for {subcategory.lower()} — not generic or template-like.
+- Be creative with composition, angle, and contextual props. Let the product category inspire the scene.
+
+{color_block}
 
 {self._RULER_BLOCK}
 
-PRODUCT PRESERVATION:
-- Use the EXACT same product from the input image.
-- Maintain the SAME angle, orientation, and position as in the original photo.
-- Do NOT change the product's perspective or viewing angle.
-- Preserve all product details, colors, textures exactly as shown.
-- Keep all text, labels, logos completely unchanged.
-CONTEXT AND SETTING:
-- Place the product in a {main_category.lower()} environment: {context}
-- The product should appear naturally placed in this setting.
-- Maintain realistic scale relative to the surrounding interior.
-BACKGROUND AND COMPOSITION:
-- Create a soft, slightly blurred background that matches {main_category} aesthetic and the INTERIOR STYLE above.
-- Background should be authentic but not distracting from the product.
-- Use lighting consistent with the INTERIOR STYLE — natural daylight for variant 1, warm lamp light for variant 2.
-- Add subtle contextual elements that make sense for {subcategory.lower()}.
 {self._FRAMING_BLOCK}
 
-STYLING GUIDELINES:
-- The scene should look realistic and professionally styled.
+COMPOSITION:
+- Product is the clear hero: large, sharp, front and center.
+- Background is soft, blurred, and subordinate to the product.
+- Add subtle, natural props appropriate for {subcategory.lower()}.
 - Keep the composition clean and uncluttered.
-TECHNICAL REQUIREMENTS:
-- High-quality professional photography.
-- Product appearance must be identical to input (only environment changes).
-- Strong background blur — the interior context should be soft and out of focus.
-- No ruler or measurement markings in the output.
-FINAL OUTPUT: Close-up product photo in appropriate {main_category} context, styled as described in INTERIOR STYLE above. The product is the hero of the shot — large, sharp, dominant. The interior is visible but blurred behind it.
+FINAL OUTPUT:
+- Professional close-up product photo in a natural {main_category.lower()} setting.
+- Product: identical to input. Scene: {context}. Color palette: {accent["label"]}.
+- No ruler or measurement markings.
 """
         return prompt
 
