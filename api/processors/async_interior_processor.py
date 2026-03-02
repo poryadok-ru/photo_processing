@@ -175,25 +175,15 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
 
     # Общий блок про линейку — одинаковый для обоих промптов
     _RULER_BLOCK = (
-        "SCALE REFERENCE (ruler):\n"
-        "- The input image MAY contain a centimeter ruler placed next to the product.\n"
-        "- If a ruler is visible, use it ONLY to determine the exact real-world size of the product.\n"
-        "- The product must appear in the output at its true physical scale relative to the interior "
-        "(e.g. if the ruler shows the product is 12 cm tall, it must look like a 12 cm object in a real room).\n"
-        "- Do NOT make the product larger or smaller than its actual size.\n"
-        "- Remove the ruler from the final image — it must NOT appear in the output."
+        "RULER (if visible in input): use only to determine real-world product size — "
+        "keep that scale in the output. Remove the ruler from the final image."
     )
 
     # Общий блок про кадрирование — одинаковый для обоих промптов
     _FRAMING_BLOCK = (
-        "FRAMING & PROXIMITY — CRITICAL:\n"
-        "- This is a CLOSE-UP product shot. The camera must be positioned CLOSE to the product.\n"
-        "- The product must fill AT LEAST 60-70% of the frame height.\n"
-        "- Think of it as a macro product photo: the product is front and center, large and dominant.\n"
-        "- DO NOT place the product far away in a wide room shot — no full-room views, no distant perspectives.\n"
-        "- DO NOT show large empty spaces around the product.\n"
-        "- The background/interior is only a narrow, blurred context strip — it should NOT compete with the product.\n"
-        "- Imagine the photographer walked up close and pointed the camera directly at the product from 0.5-1.5 meters away."
+        "FRAMING: close-up shot — product fills 60-70% of frame height. "
+        "No wide-room views, no empty space around product. "
+        "Background is a blurred context strip only — camera is 0.5-1.5 m from product."
     )
 
     def _generate_context_prompt(
@@ -224,23 +214,11 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
                 extra_info.append(f"- Product category: {subcategory}")
             extra = "\n".join(extra_info)
             prompt = f"""
-TASK: Add a natural, contextually appropriate background to this product photo. The product must remain 100% unchanged.
+Add a natural background to this product photo. Product must be copied EXACTLY — same shape, colors, quantity, angle. Do not alter the product in any way.
 
-PRODUCT INFORMATION (context only — do not display in the image):
-{extra}
+PRODUCT: {extra}
 
-PRODUCT PRESERVATION — HIGHEST PRIORITY:
-- Copy the product from the input image EXACTLY as-is: same shape, same colors, same quantity of items, same angle, same orientation.
-- DO NOT add, remove, or change any part of the product itself.
-- DO NOT change the number of items (if there are 3 bottles, keep exactly 3 bottles).
-- Preserve every detail: colors, textures, labels, logos, text, packaging.
-- The product in the output must be INDISTINGUISHABLE from the product in the input.
-
-BACKGROUND SCENE — choose freely based on the product:
-- Pick the most natural, logical real-world setting for this specific product.
-- Let the product category and name guide your choice: cleaning products → bathroom or kitchen; garden supplies → outdoors or balcony; cookware → kitchen; textiles → bedroom or living room; etc.
-- The scene should feel genuinely appropriate — like a real lifestyle photo for this product.
-- Be creative with the composition, props, and setting — make it feel alive, not generic.
+SCENE: Choose the most fitting real-world setting based on the product name and category. Be creative — make it feel like a genuine lifestyle photo, not a template.
 
 {color_block}
 
@@ -248,33 +226,16 @@ BACKGROUND SCENE — choose freely based on the product:
 
 {self._FRAMING_BLOCK}
 
-COMPOSITION:
-- Product is the clear hero: large, sharp, front and center.
-- Background is soft, blurred, and subordinate to the product.
-- Add 1-2 contextually fitting props at most — keep it natural, not cluttered.
-FINAL OUTPUT:
-- Professional close-up product photo with a natural, product-appropriate background.
-- Product: identical to input. Color palette: {accent["label"]}.
-- No ruler or measurement markings.
+Product is the sharp hero, background is soft and blurred. Add 1-2 natural props max. No ruler in output.
 """
         else:
             context = Config.THEMATIC_SUBCATEGORIES.get(main_category, {}).get(
                 subcategory, "neutral interior setting"
             )
             prompt = f"""
-TASK: Add a natural, contextually appropriate background to this product photo. The product must remain 100% unchanged.
+Add a natural background to this product photo. Product must be copied EXACTLY — same shape, colors, quantity, angle. Do not alter the product in any way.
 
-PRODUCT PRESERVATION — HIGHEST PRIORITY:
-- Copy the product from the input image EXACTLY as-is: same shape, same colors, same quantity of items, same angle, same orientation.
-- DO NOT add, remove, or change any part of the product itself.
-- DO NOT change the number of items (if there are 3 bottles, keep exactly 3 bottles).
-- Preserve every detail: colors, textures, labels, logos, text, packaging.
-- The product in the output must be INDISTINGUISHABLE from the product in the input.
-
-BACKGROUND SCENE:
-- Place the product in a {main_category.lower()} setting: {context}
-- Make the scene feel alive and authentic for {subcategory.lower()} — not generic or template-like.
-- Be creative with composition, angle, and contextual props. Let the product category inspire the scene.
+SCENE: {main_category} — {context}. Make it feel alive and authentic for {subcategory.lower()}, not generic.
 
 {color_block}
 
@@ -282,15 +243,7 @@ BACKGROUND SCENE:
 
 {self._FRAMING_BLOCK}
 
-COMPOSITION:
-- Product is the clear hero: large, sharp, front and center.
-- Background is soft, blurred, and subordinate to the product.
-- Add subtle, natural props appropriate for {subcategory.lower()}.
-- Keep the composition clean and uncluttered.
-FINAL OUTPUT:
-- Professional close-up product photo in a natural {main_category.lower()} setting.
-- Product: identical to input. Scene: {context}. Color palette: {accent["label"]}.
-- No ruler or measurement markings.
+Product is the sharp hero, background is soft and blurred. Add subtle props for {subcategory.lower()}. No ruler in output.
 """
         return prompt
 
