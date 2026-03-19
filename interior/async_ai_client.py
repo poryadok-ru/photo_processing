@@ -153,21 +153,32 @@ class AsyncAIClient:
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                     ]}
                 ],
-                temperature=0.1,
-                max_tokens=100
             )
             
             result = response.choices[0].message.content.strip()
             if "|" in result:
                 return result.split("|")
             else:
+                logger.warning(f"Неожиданный формат ответа категоризации: {result!r}")
                 return "LIVING_ROOM", "DECOR"
                 
         except Exception as e:
-            logger.error(f"Ошибка анализа категории: {e}")
+            import traceback
+            error_body = ""
+            if hasattr(e, "response") and e.response is not None:
+                try:
+                    error_body = e.response.text
+                except Exception:
+                    pass
+            if hasattr(e, "body"):
+                error_body = str(e.body)
+            logger.error(
+                f"Ошибка анализа категории: {e} | error_body={error_body!r}"
+            )
+            traceback.print_exc()
             return "LIVING_ROOM", "DECOR"
     
-    async def edit_image_with_gemini(self, image_data: bytes, prompt: str, logger: CustomLogger, variant: int = 1) -> Optional[bytes]:
+    async def edit_image_with_gemini(self, image_data: bytes, prompt: str, logger: CustomLogger) -> Optional[bytes]:
         """Асинхронно генерирует изображение (совместимость с Gemini 2.5)"""
         base64_image = base64.b64encode(image_data).decode('utf-8')
         
@@ -181,7 +192,6 @@ class AsyncAIClient:
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                     ]
                 }],
-                max_tokens=1000
             )
             
             msg = response.choices[0].message
@@ -221,11 +231,22 @@ class AsyncAIClient:
             return None
             
         except Exception as e:
-            logger.error(f"Ошибка генерации изображения: {e}")
             import traceback
+            # Пытаемся достать тело ошибки от LiteLLM/httpx
+            error_body = ""
+            if hasattr(e, "response") and e.response is not None:
+                try:
+                    error_body = e.response.text
+                except Exception:
+                    pass
+            if hasattr(e, "body"):
+                error_body = str(e.body)
+            logger.error(
+                f"Ошибка генерации изображения: {e} | "
+                f"error_body={error_body!r}"
+            )
             traceback.print_exc()
             return None
-            import re
 
 SHEET_ID = config.app.sheet_id
 GID = config.app.gid

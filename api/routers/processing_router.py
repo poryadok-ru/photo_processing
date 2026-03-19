@@ -122,7 +122,8 @@ async def generate_image(
     from api.processors.async_interior_processor import AsyncInteriorProcessor
 
     processor = AsyncInteriorProcessor()
-    total = len(processor._COLOR_ACCENTS)
+    # Размер пула берём как максимум из обоих — индекс подходит для обоих через %
+    total = max(len(processor._INDOOR_ACCENTS), len(processor._OUTDOOR_ACCENTS))
     scene_index = _next_scene_index(total)
 
     processed_data, output_filename = await processor.process_single(file, scene_index=scene_index)
@@ -133,6 +134,5 @@ async def generate_image(
         headers={
             "Content-Disposition": f"attachment; filename={output_filename}",
             "X-Scene-Index": str(scene_index),
-            "X-Scene-Label": processor._COLOR_ACCENTS[scene_index]["label"],
         }
     )

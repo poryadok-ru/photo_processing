@@ -137,60 +137,35 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
             logger.finish_error(processing_type=processing_type_name, error=str(e))
             raise
 
-    # ── Пул цветовых акцентов — влияют только на палитру, не диктуют композицию ─
-    # Роутер случайно выбирает индекс. Сцену модель подбирает сама по категории.
-    _COLOR_ACCENTS = [
-        {
-            "label": "pure white & light",
-            "palette": (
-                "Background palette: pure white and very light grey tones. "
-                "Crisp, clean, bright. Minimal color — let the product stand out."
-            ),
-        },
-        {
-            "label": "warm sand & linen",
-            "palette": (
-                "Background palette: warm sandy beige, cream, and soft linen tones. "
-                "Warm natural light. Cozy and inviting without being heavy."
-            ),
-        },
-        {
-            "label": "soft sage & muted green",
-            "palette": (
-                "Background palette: muted sage green, dusty eucalyptus, and off-white. "
-                "Fresh and natural feel. Light and airy, not saturated."
-            ),
-        },
-        {
-            "label": "blush & warm rose",
-            "palette": (
-                "Background palette: very soft blush pink, warm rose-white, and light peach tones. "
-                "Delicate and elegant. Light-toned, never dark."
-            ),
-        },
-        {
-            "label": "pale blue & cool grey",
-            "palette": (
-                "Background palette: pale sky blue, cool light grey, and white. "
-                "Fresh and airy. Clean and modern without being cold."
-            ),
-        },
-        {
-            "label": "warm terracotta & oat",
-            "palette": (
-                "Background palette: very light terracotta, warm oat, and natural clay tones. "
-                "Earthy but bright. Sun-warmed feel, always light-toned."
-            ),
-        },
+    # ── Цветовые акценты освещения ───────────────────────────────────────────
+    # Для интерьерных товаров — варьируется характер света.
+    # Для уличных (GARDEN, SPORT_OUTDOOR) — варьируется природное освещение.
+    # Категория определяется AI в analyze_thematic_subcategory — ключевые слова не нужны.
+
+    _INDOOR_ACCENTS = [
+        {"label": "bright & airy",       "mood": "Bright, clean natural daylight. Light, airy atmosphere."},
+        {"label": "warm morning light",   "mood": "Soft warm morning light. Golden and gentle. Cozy without being heavy."},
+        {"label": "soft diffused light",  "mood": "Even, soft diffused daylight through a window. Calm and neutral."},
+        {"label": "fresh & natural",      "mood": "Fresh natural daylight, slightly cool. Clean and modern."},
+        {"label": "gentle warm glow",     "mood": "Warm, gentle ambient light. Inviting and soft."},
     ]
 
-    # Общий блок про линейку — одинаковый для обоих промптов
+    _OUTDOOR_ACCENTS = [
+        {"label": "sunny day",            "mood": "Bright sunny day. Natural green surroundings — grass, trees, foliage."},
+        {"label": "soft garden light",    "mood": "Soft diffused daylight in a garden. Green plants, flowers, natural textures."},
+        {"label": "warm afternoon",       "mood": "Warm afternoon light. Lush greenery, natural landscape."},
+        {"label": "fresh overcast",       "mood": "Fresh overcast daylight. Green garden or terrace. Soft shadows."},
+        {"label": "golden hour garden",   "mood": "Gentle golden hour light. Green garden backdrop, natural flowers nearby."},
+    ]
+
+    # Категории которые считаются уличными/природными
+    _OUTDOOR_CATEGORIES = {"GARDEN", "SPORT_OUTDOOR"}
+
     _RULER_BLOCK = (
         "RULER (if visible in input): use only to determine real-world product size — "
         "keep that scale in the output. Remove the ruler from the final image."
     )
 
-    # Общий блок про кадрирование — одинаковый для обоих промптов
     _FRAMING_BLOCK = (
         "FRAMING: close-up shot — product fills 60-70% of frame height. "
         "No wide-room views, no empty space around product. "
@@ -206,56 +181,78 @@ class AsyncInteriorProcessor(AsyncBaseProcessor):
         scene_index: int = 0,
     ) -> str:
         """
-        Строит промпт. Сцену модель выбирает сама по категории/названию товара.
-        Варьируется только цветовой акцент фона (scene_index → _COLOR_ACCENTS).
+        Строит промпт для генерации фона.
+
+        Пути:
+        - use_custom=True  → товар из Google Sheets: есть product_name + subcategory (сегмент).
+                             Gemini сам выбирает сцену по названию и категории.
+        - use_custom=False → товар определён AI: есть main_category + subcategory из фиксированного списка.
+                             Используем контекст из Config.THEMATIC_SUBCATEGORIES.
+
+        В обоих случаях — один цветовой акцент из пула (indoor или outdoor),
+        выбранный по категории. Никаких ключевых слов.
         """
-        accent = self._COLOR_ACCENTS[scene_index % len(self._COLOR_ACCENTS)]
-        color_block = (
-            f"BACKGROUND COLOR PALETTE ({accent['label']}):\n"
-            f"- {accent['palette']}\n"
-            f"- Always light-toned: background must NEVER be dark or heavily saturated.\n"
-            f"- The product itself must remain UNCHANGED — only the environment changes."
+        # Определяем outdoor по категории — AI уже сделал эту работу
+        is_outdoor = (main_category in self._OUTDOOR_CATEGORIES) if main_category else False
+
+        pool = self._OUTDOOR_ACCENTS if is_outdoor else self._INDOOR_ACCENTS
+        accent = pool[scene_index % len(pool)]
+
+        atmosphere = (
+            f"ATMOSPHERE & LIGHTING ({accent['label']}):\n"
+            f"- {accent['mood']}\n"
+            f"- Always light-toned. The product itself must remain UNCHANGED."
         )
 
+        preservation = (
+            "PRODUCT: copy it EXACTLY from the input — same shape, colors, quantity, angle. "
+            "Do not alter the product in any way."
+        )
+
+        framing = self._FRAMING_BLOCK
+        ruler   = self._RULER_BLOCK
+
         if use_custom:
-            extra_info = []
+            # Google Sheets path: Gemini знает название и категорию — пусть сам выбирает сцену
+            info_parts = []
             if product_name:
-                extra_info.append(f"- Product name: {product_name}")
+                info_parts.append(f"Product name: {product_name}")
             if subcategory:
-                extra_info.append(f"- Product category: {subcategory}")
-            extra = "\n".join(extra_info)
-            prompt = f"""
-Add a natural background to this product photo. Product must be copied EXACTLY — same shape, colors, quantity, angle. Do not alter the product in any way.
+                info_parts.append(f"Product category: {subcategory}")
+            info = ". ".join(info_parts)
 
-PRODUCT: {extra}
+            prompt = f"""Add a natural background to this product photo. {preservation}
 
-SCENE: Choose the most fitting real-world setting based on the product name and category. Be creative — make it feel like a genuine lifestyle photo, not a template.
+PRODUCT INFO (for scene selection only, do not display): {info}
 
-{color_block}
+SCENE: choose the most natural real-world setting for this product. Let the name and category guide you — be creative, make it feel like a genuine lifestyle photo.
 
-{self._RULER_BLOCK}
+{atmosphere}
 
-{self._FRAMING_BLOCK}
+{ruler}
 
-Product is the sharp hero, background is soft and blurred. Add 1-2 natural props max. No ruler in output.
-"""
+{framing}
+
+Sharp product, soft blurred background, 1-2 fitting props max. No ruler in output."""
+
         else:
+            # AI-categorization path: используем готовый контекст из Config
             context = Config.THEMATIC_SUBCATEGORIES.get(main_category, {}).get(
-                subcategory, "neutral interior setting"
+                subcategory, "natural setting appropriate for this product"
             )
-            prompt = f"""
-Add a natural background to this product photo. Product must be copied EXACTLY — same shape, colors, quantity, angle. Do not alter the product in any way.
 
-SCENE: {main_category} — {context}. Make it feel alive and authentic for {subcategory.lower()}, not generic.
+            prompt = f"""Add a natural background to this product photo. {preservation}
 
-{color_block}
+SCENE: {main_category} — {context}. Make it authentic, not generic.
 
-{self._RULER_BLOCK}
+{atmosphere}
 
-{self._FRAMING_BLOCK}
+{ruler}
 
-Product is the sharp hero, background is soft and blurred. Add subtle props for {subcategory.lower()}. No ruler in output.
-"""
+{framing}
+
+Sharp product, soft blurred background, subtle props for {subcategory.lower() if subcategory else "this product type"}. No ruler in output."""
+
         return prompt
 
     def _crop_to_3_4(self, image: Image.Image) -> Image.Image:
