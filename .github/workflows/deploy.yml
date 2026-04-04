@@ -65,10 +65,11 @@ jobs:
             OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
             PIXIAN_API_USER=${{ secrets.PIXIAN_API_USER }}
             PIXIAN_API_KEY=${{ secrets.PIXIAN_API_KEY }}
-            PIXIAN_TEST_MODE=${{ secrets.PIXIAN_TEST_MODE }}
+            PIXIAN_TEST_MODE=${{ vars.PIXIAN_TEST_MODE }}
             PORADOCK_LOG_TOKEN=${{ secrets.PORADOCK_LOG_TOKEN }}
-            SHEET_ID=${{ secrets.SHEET_ID }}
-            SQL_DEBUG=${{ secrets.SQL_DEBUG }}
+            SHEET_ID=${{ vars.SHEET_ID }}
+            SQL_DEBUG=${{ vars.SQL_DEBUG }}
+            IMAGE_MODEL=${{ vars.IMAGE_MODEL }}
             EOF
             
             # Загружаем Docker образ
